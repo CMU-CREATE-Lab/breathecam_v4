@@ -171,24 +171,28 @@ int main(int argc, char **argv) {
 	// (options_->mode can override the choice of camera mode, however.)
 	libcamera::StreamRoles stream_roles = 
 		{ libcamera::StreamRole::StillCapture, libcamera::StreamRole::Raw };
-	std::unique_ptr<libcamera::CameraConfiguration> configuration = camera->generateConfiguration(stream_roles);
-	if (!configuration)
+	std::unique_ptr<libcamera::CameraConfiguration> camera_config = camera->generateConfiguration(stream_roles);
+	if (!camera_config)
 		throw std::runtime_error("failed to generate still capture configuration");
+	camera_config->transform = libcamera::Transform::HVFlip;
 
 	auto pixel_format = libcamera::formats::YUV420;
-    configuration->at(0).pixelFormat = pixel_format;
-	configuration->at(0).bufferCount = 1; // or 2 or 3
+	libcamera::StreamConfiguration &stream_config=camera_config->at(0);
+
+    stream_config.pixelFormat = pixel_format;
+	stream_config.bufferCount = 1; // or 2 or 3
+
 	auto colour_space = libcamera::ColorSpace::Jpeg;
 	// Is this for a more recent version of libcamera?
 	//configuration->at(0).colorSpace = libcamera::ColorSpace::Jpeg;
 
-    libcamera::CameraConfiguration::Status validation = configuration->validate();
+    libcamera::CameraConfiguration::Status validation = camera_config->validate();
 	if (validation == libcamera::CameraConfiguration::Invalid)
 		throw std::runtime_error("failed to valid stream configurations");
 	else if (validation == libcamera::CameraConfiguration::Adjusted)
 		std::cerr << "Stream configuration adjusted" << std::endl;
 
-	if (camera->configure(configuration.get()) < 0)
+	if (camera->configure(camera_config.get()) < 0)
 		throw std::runtime_error("failed to configure streams");
     
     std::cerr << "Camera streams configured" << std::endl;
@@ -198,9 +202,9 @@ int main(int argc, char **argv) {
 	 	std::cerr << "    " << id->name() << " : " << info.toString() << std::endl;
 	}
 
-	std::cerr << "Found " << configuration->size() << " stream configurations\n";
+	std::cerr << "Found " << camera_config->size() << " stream configurations\n";
 
-	stream = configuration->at(0).stream();
+	stream = camera_config->at(0).stream();
 	if (!stream)
 		throw std::runtime_error("no stream");
 
