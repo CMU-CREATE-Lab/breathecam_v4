@@ -105,7 +105,20 @@ uint64 epoch_time_ms() {
 	return tv.tv_sec * (uint64)1000 + tv.tv_usec / 1000;
 }
 
-long long start_capture_time_ms;
+uint64 boot_time_ns_to_epoch_time_ms(uint64 boot_time_ns) {
+	struct timespec ts;
+	clock_gettime(CLOCK_BOOTTIME, &ts);
+	uint64 boot_time_us = ts.tv_sec * (uint64)1000000 + ts.tv_nsec / 1000;
+
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return tv.tv_sec * (uint64)1000 + tv.tv_usec / 1000;
+	uint64 epoch_time_us = tv.tv_sec * (uint64)1000000 + tv.tv_usec;
+
+	return (boot_time_ns / 1000 - boot_time_us + epoch_time_us) / 1000;
+}
+
+uint64 start_capture_time_ms;
 
 std::string format_ms(uint64 ms) {
 	return fmt::format("{}.{:03}", ms / 1000, ms % 1000);
@@ -122,10 +135,14 @@ void msleep(uint64 ms) {
 }
 
 void request_complete(libcamera::Request *request) {
-	uint64 end_capture_time_ms = boot_time_ms();
+	uint64 end_capture_time_ms = epoch_time_ms();
     log("Capture complete in {}s with status {}.  Metadata:", format_ms(end_capture_time_ms - start_capture_time_ms), request->status());
 	for (auto &[id, value]: request->metadata()) {
-		log(fmt::format("   {}({}): {}", id, control_name_from_id(id), value.toString()));
+		std::string val_str = value.toString();
+		if (id == libcamera::controls::SENSOR_TIMESTAMP) {
+			val_str = format_ms(boot_time_ns_to_epoch_time_ms(atoll(val_str.c_str())));
+		}
+		log(fmt::format("   {}({}): {}", id, control_name_from_id(id), val_str));
 	}
 
 	const std::vector<libcamera::Span<uint8_t>> mem = Mmap(frame_buffer);
@@ -207,8 +224,8 @@ int main(int argc, char **argv) {
     stream_config.pixelFormat = pixel_format;
 	stream_config.bufferCount = 1; // or 2 or 3
 
-	auto colour_space = libcamera::ColorSpace::Jpeg;
 	// Is this for a more recent version of libcamera?
+	//auto colour_space = libcamera::ColorSpace::Jpeg;
 	//configuration->at(0).colorSpace = libcamera::ColorSpace::Jpeg;
 
     libcamera::CameraConfiguration::Status validation = camera_config->validate();
@@ -323,7 +340,7 @@ int main(int argc, char **argv) {
 	camera->requestCompleted.connect(request_complete);
 
 	int cadence_factor = 1;
-	int cadence_ms = 5000; // ms
+	int cadence_ms = 2000; // ms
 	std::unique_ptr<libcamera::Request> request;
 
 	while (1) {
@@ -334,22 +351,22 @@ int main(int argc, char **argv) {
 		msleep(sleep_time_ms);
 		if (capture_in_progress) {
 			cadence_factor = 2;
-			log("Capture still in progress, doubling cadence for next capture to {}s", format_ms(cadence_ms * cadence_factor));
+			log("Capture taking too long; doubling cadence for next capture to {}s", format_ms(cadence_ms * cadence_factor));
+			continue;
 		} else {
 			cadence_factor = 1;
 		}
 
-		log("Creating request");
+		advertised_capture_time = desired_capture_time_ms / 1000;
+		log("Queueing request to capture {}", advertised_capture_time);
 		request = camera->createRequest();
 		request->addBuffer(stream, frame_buffer);
 
-		advertised_capture_time = desired_capture_time_ms / 1000;
-		start_capture_time_ms = boot_time_ms();
+		start_capture_time_ms = epoch_time_ms();
 		
 		capture_in_progress = true;
 		if (camera->queueRequest(request.get()) < 0)
 			throw std::runtime_error("Failed to queue request");
-		//std::cerr << "Queued request\n";
 	}
 
 	log("Stopping camera");
