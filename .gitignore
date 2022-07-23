@@ -1,3 +1,4 @@
 grab
 libcamera-apps
-foo.jpg
+*.jpg
+.vscode/settings.json

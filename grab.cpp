@@ -1,7 +1,9 @@
 #include <sys/mman.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <iostream>
+#include <fmt/core.h>
 
 #include <libcamera/base/span.h>
 #include <libcamera/camera.h>
@@ -15,13 +17,9 @@
 
 #include "write_jpg.h"
 
-//#include "core/frame_info.hpp"
-//#include "core/libcamera_app.hpp"
-//#include "core/options.hpp"
+typedef unsigned long long uint64;
 
 std::shared_ptr<libcamera::Camera> camera;
-
-
 
 std::string control_name_from_id(int id) {
 	switch (id) {
@@ -77,9 +75,11 @@ std::string control_name_from_id(int id) {
 	};
 }
 
+bool capture_in_progress = false; // TODO: fix possible race condition at end of request service
 libcamera::FrameBuffer *frame_buffer;
 std::map<libcamera::FrameBuffer *, std::vector<libcamera::Span<uint8_t>>> mapped_buffers_;
 libcamera::Stream *stream;
+long advertised_capture_time;
 
 std::vector<libcamera::Span<uint8_t>> Mmap(libcamera::FrameBuffer *buffer)
 {
@@ -93,26 +93,46 @@ int width = 4056; // TODO: how to detect these?
 int height= 3040;
 int stride = 0;
 
+uint64 boot_time_ms() {
+	struct timespec ts;
+	clock_gettime(CLOCK_BOOTTIME, &ts);
+	return ts.tv_sec * (uint64)1000 + ts.tv_nsec / 1000000;
+}
+
+uint64 epoch_time_ms() {
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return tv.tv_sec * (uint64)1000 + tv.tv_usec / 1000;
+}
+
+long long start_capture_time_ms;
+
+std::string format_ms(uint64 ms) {
+	return fmt::format("{}.{:03}", ms / 1000, ms % 1000);
+}
+
+template <typename S, typename... Args>
+void log(const S& format, Args&&... args) {
+	std::string msg = fmt::vformat(format, fmt::make_format_args(args...));
+  	std::cerr << fmt::format("{}: {}\n", format_ms(epoch_time_ms()), msg);
+}
+
+void msleep(uint64 ms) {
+	usleep(ms * 1000);
+}
+
 void request_complete(libcamera::Request *request) {
-    std::cerr << "request complete in pid=" << getpid() << " tid=" << gettid() << "\n";
-	std::cerr << request->toString() << "\n";
-	std::cerr << "Metadata:\n";
-	std::cerr << "status" <<request->status() << std::endl;
+	uint64 end_capture_time_ms = boot_time_ms();
+    log("Capture complete in {}s with status {}.  Metadata:", format_ms(end_capture_time_ms - start_capture_time_ms), request->status());
 	for (auto &[id, value]: request->metadata()) {
-		std::cerr << "   " << id << "(" << control_name_from_id(id) << "):  " << value.toString();
-		// if (camera->controls().count(id)) {
-		// 	std::cerr << " " << camera->controls().count(id);
-		// 	//std::cerr << " " << camera->controls().at(id).toString();
-		// 	std::cerr << " " << camera->controls().find(id)->second.toString();
-		// }
-		std::cerr << std::endl;
+		log(fmt::format("   {}({}): {}", id, control_name_from_id(id), value.toString()));
 	}
 
 	const std::vector<libcamera::Span<uint8_t>> mem = Mmap(frame_buffer);
 
-	std::string output_filename("foo.jpg");
+	std::string output_filename(fmt::format("{}.jpg", advertised_capture_time));
 	int jpg_quality = 90;
-	bool verbose = true;
+	bool verbose = false;
 
 	jpeg_save(
 	 	mem,
@@ -128,13 +148,18 @@ void request_complete(libcamera::Request *request) {
 		jpg_quality, 
 		0, // restart
 		verbose);
+	log("Wrote image to {}", output_filename);
+
+	// Address possible race condition here -- can we actually start a new request before this function returns?
+	assert(capture_in_progress);
+	capture_in_progress = false;
 }
 
 
 
 
 int main(int argc, char **argv) {
-	std::cerr << "Main pid=" << getpid() << " tid=" << gettid() << "\n";
+	//std::cerr << "Main pid=" << getpid() << " tid=" << gettid() << "\n";
     libcamera::CameraManager manager;
     int ret = manager.start();
  	if (ret) {
@@ -163,9 +188,9 @@ int main(int argc, char **argv) {
 		throw std::runtime_error("failed to acquire camera " + cam_id);
     }
 
-	std::cerr << "Acquired camera " << cam_id << std::endl;
+	log("Acquired camera {}", cam_id);
 
-    std::cerr << "Configuring still capture..." << std::endl;
+    log("Configuring still capture...");
 
 	// Always request a raw stream as this forces the full resolution capture mode.
 	// (options_->mode can override the choice of camera mode, however.)
@@ -190,25 +215,23 @@ int main(int argc, char **argv) {
 	if (validation == libcamera::CameraConfiguration::Invalid)
 		throw std::runtime_error("failed to valid stream configurations");
 	else if (validation == libcamera::CameraConfiguration::Adjusted)
-		std::cerr << "Stream configuration adjusted" << std::endl;
+		log("Stream configuration adjusted");
 
 	if (camera->configure(camera_config.get()) < 0)
 		throw std::runtime_error("failed to configure streams");
     
-    std::cerr << "Camera streams configured" << std::endl;
+    log("Camera streams configured");
 
-	std::cerr << "Available controls:" << std::endl;
+	log("Available controls:");
 	for (auto const &[id, info] : camera->controls()) {
-	 	std::cerr << "    " << id->name() << " : " << info.toString() << std::endl;
+	 	log("    {}: {}", id->name(), info.toString());
 	}
 
-	std::cerr << "Found " << camera_config->size() << " stream configurations\n";
+	log("Found {} stream configurations", camera_config->size());
 
 	stream = camera_config->at(0).stream();
 	if (!stream)
 		throw std::runtime_error("no stream");
-
-
 
     // Configure camera?
     //
@@ -262,13 +285,13 @@ int main(int argc, char **argv) {
 	// {
 	//libcamera::Stream *stream = config.stream();
 
-	std::cerr << "Allocating frame buffers\n";
+	log("Allocating frame buffers");
 	if (allocator_->allocate(stream) < 0)
 		throw std::runtime_error("failed to allocate capture buffers");
 
 	for (const std::unique_ptr<libcamera::FrameBuffer> &buffer : allocator_->buffers(stream))
 	{
-		std::cerr << "Allocating framebuffer " << &buffer << "\n";
+		log("Allocating framebuffer {}", (void*)&buffer);
 		// "Single plane" buffers appear as multi-plane here, but we can spot them because then
 		// planes all share the same fd. We accumulate them so as to mmap the buffer only once.
 		size_t buffer_size = 0;
@@ -293,34 +316,48 @@ int main(int argc, char **argv) {
 
     libcamera::ControlList control_list(camera->controls());
 
-	std::cerr << "Starting camera\n";
+	log("Starting camera");
 	if (camera->start(&control_list)) 
 		throw std::runtime_error("failed to start camera");
 
-	std::cerr << "Creating request\n";
 	camera->requestCompleted.connect(request_complete);
 
-    std::unique_ptr<libcamera::Request> request = camera->createRequest();
-	request->addBuffer(stream, frame_buffer);
+	int cadence_factor = 1;
+	int cadence_ms = 5000; // ms
+	std::unique_ptr<libcamera::Request> request;
 
-	if (camera->queueRequest(request.get()) < 0)
-		throw std::runtime_error("Failed to queue request");
-	std::cerr << "Queued request\n";
+	while (1) {
+		uint64 current_time_ms = epoch_time_ms();
+		uint64 desired_capture_time_ms = (current_time_ms + cadence_ms) / cadence_ms * cadence_ms;
+		uint64 sleep_time_ms = desired_capture_time_ms - current_time_ms;
+		log("Sleeping {}s until {}", format_ms(sleep_time_ms), format_ms(desired_capture_time_ms));
+		msleep(sleep_time_ms);
+		if (capture_in_progress) {
+			cadence_factor = 2;
+			log("Capture still in progress, doubling cadence for next capture to {}s", format_ms(cadence_ms * cadence_factor));
+		} else {
+			cadence_factor = 1;
+		}
 
-	std::cerr << "Sleeping\n";
-	usleep(5000000);
-	std::cerr << "Finished sleeping\n";
+		log("Creating request");
+		request = camera->createRequest();
+		request->addBuffer(stream, frame_buffer);
 
+		advertised_capture_time = desired_capture_time_ms / 1000;
+		start_capture_time_ms = boot_time_ms();
 		
+		capture_in_progress = true;
+		if (camera->queueRequest(request.get()) < 0)
+			throw std::runtime_error("Failed to queue request");
+		//std::cerr << "Queued request\n";
+	}
 
-
-
-	std::cerr << "Stopping camera\n";
+	log("Stopping camera");
 	camera->stop();
 	
-    std::cerr << "Releasing camera\n";
+    log("Releasing camera");
     camera->release();
-    std::cerr << "Camera released\n";
+    log("Camera released");
     return 0;
 }
 
