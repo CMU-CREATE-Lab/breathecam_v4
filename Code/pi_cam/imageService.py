@@ -18,6 +18,7 @@ class ImageService:
         self.mux_channels = [int(x) for x in bc["mux_channels"].split()]
         self.rotation = [int(x) for x in bc["rotation"].split()]
         self.tuning_file = bc["tuning_file"]
+        self.interval = int(bc["interval"]) # in seconds
 
     def checkDiskUsage(self):
         wot = disk_usage(self.config.base_dir())
@@ -35,6 +36,7 @@ class ImageService:
         cmd = self.grab_cmd.split(' ')
         rot = self.rotation[0]
         cmd += ["--destination-dir", self.config.image_dir()]
+        cmd += ["--interval-ms", str(self.interval * 1000)]
         if rot != 0:
             cmd += ["--rotation", str(rot)]
         if self.tuning_file:
