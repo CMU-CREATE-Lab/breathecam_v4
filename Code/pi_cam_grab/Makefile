@@ -1,3 +1,5 @@
-grab: grab.cpp
-#	g++ --std=c++17 -I /usr/include/libcamera grab.cpp -o grab -Lcamera_app -Lcamera -Lcamera-base
-	g++ -g -Wall --std=c++20 -I /usr/include/libcamera write_jpg.cpp grab.cpp -o grab /usr/lib/arm-linux-gnueabihf/libcamera.so /usr/lib/arm-linux-gnueabihf/libcamera-base.so /usr/lib/arm-linux-gnueabihf/libcamera_app.so -lexif -ljpeg -lfmt
+
+grab: grab.cpp write_jpg.cpp compute_backtrace_gdb.cpp
+	g++ -g -Wall --std=c++20 -I /usr/include/libcamera -DBOOST_STACKTRACE_USE_BACKTRACE \
+		$^ -o grab \
+		-lcamera -lcamera-base -lboost_program_options -lexif -ljpeg -lfmt

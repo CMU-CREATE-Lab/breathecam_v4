@@ -17,12 +17,52 @@ class ImageService:
         self.camera_mux = int(bc["camera_mux"])
         self.mux_channels = [int(x) for x in bc["mux_channels"].split()]
         self.rotation = [int(x) for x in bc["rotation"].split()]
+        self.tuning_file = bc["tuning_file"]
 
     def checkDiskUsage(self):
         wot = disk_usage(self.config.base_dir())
         return wot.used / wot.total
 
     def grabMulti(self):
+        if os.path.basename(self.grab_cmd) == "grab":
+            self.grabMultiGrab()
+        else:
+            self.grabMultiLibcameraStill()
+
+    # Grab multiple photos using ../pi_cam_grab/grab
+    def grabMultiGrab(self):
+        assert(not self.camera_mux)
+        cmd = self.grab_cmd.split(' ')
+        rot = self.rotation[0]
+        cmd += ["--destination-dir", self.config.image_dir()]
+        if rot != 0:
+            cmd += ["--rotation", str(rot)]
+        if self.tuning_file:
+            cmd += ["--tuning-file", self.tuning_file]
+        self.log.info(f"Running {' '.join(cmd)}")
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # Grab multiple photos using a libcamera-still (or maybe other libcamera-apps)
+    def grabMultiLibcameraStill(self):
         now = int(time.time())
         if self.camera_mux:
             channels = self.mux_channels
