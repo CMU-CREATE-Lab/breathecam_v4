@@ -2,9 +2,10 @@ RPI SETUP
 
 - install raspbian (download from https://www.raspberrypi.org/)
   NOTE: Arducam may require a specific patched kernel distribution, see below.
-- update and upgrade
+- update and upgrade and install dependencies
 	> sudo apt-get update
 	> sudo apt-get upgrade
+    > sudo apt install libfmt-dev libboost-program-options-dev libcamera-dev libjpeg62-turbo-dev libexif-dev
 - remove GUI (allow to reboot)
 	> sudo raspi-config
 	  Settings:
@@ -14,7 +15,10 @@ RPI SETUP
 	    Set hostname? xxx.breathecam.local
 	    Can set up wifi for debugging
 	> sudo reboot
-- git clone https://github.com/robmacl/breathecam.git
+- git clone https://github.com/CMU-CREATE-Lab/breathecam_v4.git breathecam
+- build
+    > cd breathecam/Code/pi_cam_grab
+    > make
 - cd to rpi code tree
      	> cd breathecam/Code/pi_cam
 - launch breathecam on boot
@@ -24,6 +28,11 @@ RPI SETUP
 - reboot and test
 	> sudo reboot
 
+Each Pi4b board has several LEDs:
+
+* Tiny red LED:  Should be on and solid to indicate good power.  If flashing, indicates insufficient power.
+* Tiny green LED:  flashes when accessing SD card
+* Large green LEDs on ethernet:  flashes when uploading images
 
 Kernel and firmware:
 
