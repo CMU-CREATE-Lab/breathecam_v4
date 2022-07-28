@@ -3,6 +3,7 @@ import time
 import glob
 import os
 import os.path
+import socket
 from sys import exc_info
 import configparser
 
@@ -74,7 +75,7 @@ class ServiceConfig:
     def _read_config(self):
         self.parser = configparser.ConfigParser()
         self.parser.read(self.config_dir() + "breathecam.ini")
-        self._camera_id = self.parser["breathecam"]["camera_id"]
+        self._camera_id = self.parser["breathecam"]["camera_id"] or socket.gethostname()
         self._upload_url = self.parser["breathecam"]["upload_url"]
         self._interval = float(self.parser["breathecam"]["interval"])
 
