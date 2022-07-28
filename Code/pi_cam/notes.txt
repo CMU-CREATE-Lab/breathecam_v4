@@ -1,11 +1,18 @@
 RPI SETUP
 
 - install raspbian (download from https://www.raspberrypi.org/)
+  Set hostname to camera id
+        [cameraname][elementname]
+        e.g. piquad3b where piquad3 is cameraname, and b is the elementname (a being “primary”)
+  Current camera names for ecam: [http://ecam.cmucreatelab.org/status](http://ecam.cmucreatelab.org/status)
+  - nikonCamera**N**: Nikon cameras
+  - piquad**N**: New generation pi “quad” cameras
+  
   NOTE: Arducam may require a specific patched kernel distribution, see below.
 - update and upgrade and install dependencies
 	> sudo apt-get update
 	> sudo apt-get upgrade
-    > sudo apt install libfmt-dev libboost-program-options-dev libcamera-dev libjpeg62-turbo-dev libexif-dev
+    > sudo apt install libfmt-dev libboost-program-options-dev libcamera-dev libjpeg62-turbo-dev libexif-dev emacs
 - remove GUI (allow to reboot)
 	> sudo raspi-config
 	  Settings:
@@ -16,6 +23,9 @@ RPI SETUP
 	    Can set up wifi for debugging
 	> sudo reboot
 - git clone https://github.com/CMU-CREATE-Lab/breathecam_v4.git breathecam
+- changing hostname (if necessary)
+    > sudo hostnamectl set-hostname NEWHOSTNAME --static
+    > sudo emacs /etc/hosts
 - build
     > cd breathecam/Code/pi_cam_grab
     > make
