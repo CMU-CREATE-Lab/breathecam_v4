@@ -1,0 +1,6 @@
+[submodule "Code/pi_cam_grab/libcamera"]
+	path = Code/pi_cam_grab/libcamera
+	url = https://git.libcamera.org/libcamera/libcamera.git
+[submodule "Code/pi_cam_grab/libcamera-apps"]
+	path = Code/pi_cam_grab/libcamera-apps
+	url = https://github.com/raspberrypi/libcamera-apps.git
