@@ -112,7 +112,7 @@ shell_cmd("sudo sed --in-place s/splash// /boot/cmdline.txt")
 def zerotier_join_network(network):
     try:
         subprocess.check_output("sudo zerotier-cli listnetworks", shell=True)
-    except FileNotFoundError as e:
+    except:
         print("Installing zerotier")
         shell_cmd("curl -s https://install.zerotier.com | sudo bash")
 
