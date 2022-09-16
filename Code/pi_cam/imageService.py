@@ -1,19 +1,23 @@
+import datetime
+import math
+import shutil
 import subprocess
 from shutil import disk_usage
 import time
 import logging
 from serviceConfig import ServiceConfig
 import os
+from picamera2 import Picamera2
+import libcamera
 from os.path import exists
 import ArducamMux
 
 class ImageService:
-    def __init__(self, config):
+    def __init__(self, config: ServiceConfig):
         self.config = config
         self.log = config.logger
         self.last_grab = 0
         bc = config.parser["breathecam"]
-        self.grab_cmd = bc["grab_cmd"]
         self.camera_mux = int(bc["camera_mux"])
         self.mux_channels = [int(x) for x in bc["mux_channels"].split()]
         self.rotation = [int(x) for x in bc["rotation"].split()]
@@ -24,91 +28,79 @@ class ImageService:
         wot = disk_usage(self.config.base_dir())
         return wot.used / wot.total
 
-    def grabMulti(self):
-        if os.path.basename(self.grab_cmd) == "grab":
-            self.grabMultiGrab()
-        else:
-            self.grabMultiLibcameraStill()
-
-    # Grab multiple photos using ../pi_cam_grab/grab
-    def grabMultiGrab(self):
-        assert(not self.camera_mux)
-        cmd = self.grab_cmd.split(' ')
-        rot = self.rotation[0]
-        cmd += ["--destination-dir", self.config.image_dir()]
-        cmd += ["--interval-ms", str(self.interval * 1000)]
-        if rot != 0:
-            cmd += ["--rotation", str(rot)]
-        if self.tuning_file:
-            cmd += ["--tuning-file", self.tuning_file]
-        self.log.info(f"Running {' '.join(cmd)}")
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # Grab multiple photos using a libcamera-still (or maybe other libcamera-apps)
-    def grabMultiLibcameraStill(self):
-        now = int(time.time())
-        if self.camera_mux:
-            channels = self.mux_channels
-        else:
-            channels = [0]
-        for cam in range(len(channels)):
-            self.grabOne(now, cam)
-
-    def grabOne(self, now, cam):
-        ofile_base = self.config.image_dir() + str(now)
-        if self.camera_mux:
-            chan = self.mux_channels[cam]
-            ofile = ofile_base + "_" + str(cam+1) + ".jpg"
-            ArducamMux.select(chan)
-        else:
-            ofile = ofile_base + ".jpg"
-
-        cmd = self.grab_cmd + " -o " + ofile
-        rot = self.rotation[cam]
-        if rot != 0:
-            cmd += " --rotation " + str(rot)
-        
-        self.log.info("Running " + cmd)
-        result = ofile
-        try:
-            proc = subprocess.run(cmd.split(), capture_output=True, text=True,
-                                  timeout=30)
-
-        except subprocess.TimeoutExpired:
-            self.log.error("Timeout while running " + cmd)
-            result = ""
-
-        else:
-            if not(exists(ofile)) :
-                self.log.error("See capture_error.txt, no output from: %s", cmd)
-                with open(self.config.log_dir() + 'capture_error.txt', 'a') as f:
-                    f.write('\n\n' + proc.stderr)
-                result = ""
-        
-        return result
-
-
     def grabLoop(self):
-        os.makedirs(self.config.image_dir(), exist_ok=True)
+        self.log.info(f"Instantiating Picamera2 with tuning file {self.tuning_file}")
+        picam2 = Picamera2(tuning=self.tuning_file)
+        transform = libcamera.Transform(rotation=self.rotation[0])
+
+        # preview defaults to lower resolution, auto-exposure and auto-white-balance
+        preview_config = picam2.create_preview_configuration()
+        preview_config["transform"] = transform
+        picam2.configure(preview_config)
+
+        picam2.start()
+        self.log.info("Running for 2 seconds in preview move to lock auto exposure")
+        time.sleep(2)
+        picam2.stop()
+
+        self.log.info("Reconfiguring camera for still")
+        # still defaults to full-resolution, auto-exposure and auto-white-balance
+        still_config = picam2.create_still_configuration()
+        still_config["transform"] = transform
+        picam2.configure(still_config)
+
+        picam2.start()
+        logging.getLogger('picamera2').setLevel(logging.WARNING)
+
+        image_dir = self.config.image_dir()
+        tmp_dir = f"{image_dir}/tmp"
+        os.makedirs(tmp_dir, exist_ok=True)
+        interval = self.config.interval()
+        last_capture_time = 0
+
+        while True:
+            usage = self.checkDiskUsage()
+            if usage > 0.95:
+                self.log.error(f"Refusing to capture image as disk is too full ({usage*100:.1f}%")
+                continue
+            current_time = time.time()
+            slop = 0.01 # seconds
+            next_capture_time = max(0, math.floor((current_time + interval - slop) / interval) * interval)
+            if last_capture_time:
+                desired_capture_time = math.floor((last_capture_time + interval * 1.5) / interval) * interval
+            
+                if desired_capture_time >= next_capture_time:
+                    next_capture_time = desired_capture_time
+                else:
+                    self.log.warning(f"MISSED {(next_capture_time - desired_capture_time) / interval:.0f} CAPTURES")
+
+            sleep_duration = next_capture_time - current_time
+
+            #time.localtime(next_capture_time).isoformat()
+            
+            next_capture_time_fmt = (
+                datetime.datetime.fromtimestamp(next_capture_time).strftime('%H:%M:%S'))
+
+            #     '%H:%M:%S.'
+            #     time.localtime(next_capture_time)
+            self.log.info(f"Sleeping {sleep_duration * 1000:.0f}ms until {next_capture_time_fmt}")
+            time.sleep(sleep_duration);
+
+            tmp_filename = f"{next_capture_time:.0f}-{os.getpid()}-tmp.jpg"
+            dest_filename = f"images/{next_capture_time:.0f}.jpg"
+
+            before = time.time()
+
+            picam2.capture_file(tmp_filename)
+            after = time.time()
+            os.rename(tmp_filename, dest_filename)
+            md = picam2.capture_metadata()
+            sensor_time_epoch = md['SensorTimestamp']/1e9 - time.clock_gettime(time.CLOCK_BOOTTIME) + time.time()
+            sensor_time_fmt = datetime.datetime.fromtimestamp(sensor_time_epoch).strftime('%H:%M:%S.%f')[:-3]
+            self.log.info(f"{dest_filename} capture (exp {md['ExposureTime']/1000}ms, sensortime {sensor_time_fmt} took {(after - before) * 1000:.0f}ms")
+
+            self.log.info(f"  metadata: {md}")
+
         while True:
             startTime = time.time()
             if startTime > (self.last_grab + self.config.interval()):
