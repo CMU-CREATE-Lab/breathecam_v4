@@ -94,7 +94,7 @@ python = "/usr/bin/python3"
 print("Disable GUI and require login password")
 shell_cmd("sudo raspi-config nonint do_boot_behaviour B1")
 
-#update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
+update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
 
 # Randy's public key
 install_ssh_key("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAHTlbKK+xkcgmCPGayAtRaEeisB+zbaaPUtz4hCi9jJIZP9PGTtqYNN/3DYzoegBerYx7It7jLaj1PnBqGkZdWIwgCpFOFJRvjf0qQU0IPFAyceV83Jj4cqTj6Xey3LmgLcNRuv3YeX2eIf+8QKrwy+rWUS3mIfQsWWGDrioCc6VDFSaw== rsargent@MacBook-Pro-94.local")
