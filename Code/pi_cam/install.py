@@ -143,4 +143,7 @@ print("Testing image capture")
 shell_cmd(f"{python} imageService.py --test-only")
 print("Start breathecam services")
 subprocess.run("./run_all.sh", shell=True)
+time.sleep(5)
 update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
+print("install.py DONE")
+
