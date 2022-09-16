@@ -59,6 +59,12 @@ def update_crontab(name, line, username=None):
 def parse_kernel_version(version):
     return [int(n) for n in version.split(".")]
 
+config_file = "config_files/breathecam.ini"
+if not os.path.exists(config_file):
+    msg = f"You must create {config_file} before running install.py.\nYou may copy and modify from breathecam.ini-example."
+    print(msg)
+    raise Exception(msg)
+
 print("Install apt package dependencies")
 shell_cmd("sudo apt update")
 shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2")
