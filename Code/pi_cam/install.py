@@ -11,10 +11,16 @@ def shell_cmd(cmd):
 
 def install_ssh_key(key):
     keyname = key.split()[-1]
+    sshdir = os.path.expanduser("~/.ssh")
+    if not os.path.exists(sshdir):
+        os.mkdir(sshdir, mode=0o700)
     keyfile = os.path.expanduser("~/.ssh/authorized_keys")
-    keyfile_contents = open(keyfile).read()
-    if keyfile_contents[-1] != "\n":
-        keyfile_contents += "\n"
+    if os.path.exists(keyfile):
+        keyfile_contents = open(keyfile).read()
+        if keyfile_contents[-1] != "\n":
+            keyfile_contents += "\n"
+    else:
+        keyfile_contents = ""
     current_keys = [line.strip() for line in keyfile_contents.splitlines()]
     if key in current_keys:
         print(f"Key {keyname} already installed")
@@ -29,9 +35,10 @@ def update_crontab(name, line, username=None):
     else:
         sudo = ""
     # Read current 
-    cmd = f"{sudo} crontab -u {username} -l 2>/dev/null"
+    cmd = f"{sudo} crontab -u {username} -l"
+    print(cmd)
     completed = subprocess.run(cmd, shell=True, capture_output=True, encoding="utf-8")
-    assert(completed.returncode == 0)
+    assert(completed.returncode == 0 or "no crontab for" in completed.stderr)
     prev_crontab = completed.stdout.splitlines(keepends=True)
     token = f"AUTOINSTALLED:{name}"
     installme = f"{line} # {token}"
@@ -78,7 +85,10 @@ else:
 
 python = "/usr/bin/python3"
 
-update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
+print("Disable GUI and require login password")
+shell_cmd("sudo raspi-config nonint do_boot_behaviour B1")
+
+#update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
 
 # Randy's public key
 install_ssh_key("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAHTlbKK+xkcgmCPGayAtRaEeisB+zbaaPUtz4hCi9jJIZP9PGTtqYNN/3DYzoegBerYx7It7jLaj1PnBqGkZdWIwgCpFOFJRvjf0qQU0IPFAyceV83Jj4cqTj6Xey3LmgLcNRuv3YeX2eIf+8QKrwy+rWUS3mIfQsWWGDrioCc6VDFSaw== rsargent@MacBook-Pro-94.local")
