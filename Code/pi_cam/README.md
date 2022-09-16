@@ -1,6 +1,6 @@
-RPI SETUP
+# RPI SETUP
 
-Create raspbian image with Raspberry Pi Imager
+### Create raspbian image with Raspberry Pi Imager
 
 - Select 32-bit raspbian
 
@@ -12,9 +12,23 @@ Create raspbian image with Raspberry Pi Imager
     - Wireless LAN country: US
     - Set locale settings: time zone America/New_York, keyboard US
 
-Install card and boot
+### Install card and boot
 
-scp ~/.ssh/breathecam_ed
+    ssh breathecam@<newhostname>
+    git clone --recursive https://github.com/CMU-CREATE-Lab/breathecam_v4.git breathecam
+    breathecam/Code/pi_cam/install.py
+
+# Remotely disable startup on boot
+
+If you're having a problem where the system fails soon after boot and is rapid-cycle rebooting, consider trying to get back control of it by remotely disabling startup.  Even if you have a 1-2 second window before reboot, you can try this multiple times until it works.
+
+    ssh piquad3a.local "echo '' | sudo crontab -"
+
+
+
+
+
+
 
 
 

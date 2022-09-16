@@ -99,3 +99,7 @@ install_ssh_key("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDUHHQOuxYvVWOewo5a9c5h657
 # Breathecam public key
 install_ssh_key("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGYlAWzLCoF5zyYN1IOFoSzsMitBlPCjknZkaHWIK9Yo breathecam@piquad3b")
 
+# Turn off "quiet" and "splash" in /boot/cmdline.txt to show verbose boot messages
+print("Enabling verbose text boot messages")
+shell_cmd("sudo sed --in-place s/quiet// /boot/cmdline.txt")
+shell_cmd("sudo sed --in-place s/splash// /boot/cmdline.txt")
