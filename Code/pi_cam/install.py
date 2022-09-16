@@ -9,6 +9,19 @@ def shell_cmd(cmd):
     print(cmd)
     print(subprocess.check_output(cmd, shell=True, encoding="utf-8"))
 
+def install_ssh_key(key):
+    keyname = key.split()[-1]
+    keyfile = os.path.expanduser("~/.ssh/authorized_keys")
+    keyfile_contents = open(keyfile).read()
+    if keyfile_contents[-1] != "\n":
+        keyfile_contents += "\n"
+    current_keys = [line.strip() for line in keyfile_contents.splitlines()]
+    if key in current_keys:
+        print(f"Key {keyname} already installed")
+    else:
+        open(keyfile, "w").write(keyfile_contents + key + "\n")
+        print(f"Key {keyname} installed")
+
 def update_crontab(name, line, username=None):
     username = username or getpass.getuser()
     if username != getpass.getuser():
@@ -67,5 +80,12 @@ python = "/usr/bin/python3"
 
 update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
 
+# Randy's public key
+install_ssh_key("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAHTlbKK+xkcgmCPGayAtRaEeisB+zbaaPUtz4hCi9jJIZP9PGTtqYNN/3DYzoegBerYx7It7jLaj1PnBqGkZdWIwgCpFOFJRvjf0qQU0IPFAyceV83Jj4cqTj6Xey3LmgLcNRuv3YeX2eIf+8QKrwy+rWUS3mIfQsWWGDrioCc6VDFSaw== rsargent@MacBook-Pro-94.local")
 
+# Rob's public key
+install_ssh_key("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDUHHQOuxYvVWOewo5a9c5h6577SoJUsWaDgJU2quNWYaqcFvXgdnsaT3sFD3KcFeBPnwxQsVM2DROyWMlnk9zKvOc9/tNs9dlswZfM03FhD1ODUzBErnQS4YpRLvehXE/BTIU9dRq0SsBNLhdRFmr7u3bWu9rvNI1Euf4VWLLJxEVTyMbq08U4OhgDVY+aYQ3NpCuDSEAT2YDnaDDcXpvfODh+/jCVsYwj48UEpZD99hcabNM6Ww20D8Ru/8gCt88GkdGgvwPQe7KXKgHCF82iEhU+JlZisVvtqylFP2niXFrUWYIRCHaPnQEeia4sHN37vHcrGCy98I0Crw1Ek6kH ram@TREMOR")
+
+# Breathecam public key
+install_ssh_key("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGYlAWzLCoF5zyYN1IOFoSzsMitBlPCjknZkaHWIK9Yo breathecam@piquad3b")
 

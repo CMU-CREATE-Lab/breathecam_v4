@@ -1,5 +1,25 @@
 RPI SETUP
 
+Create raspbian image with Raspberry Pi Imager
+
+- Select 32-bit raspbian
+
+- Click on Advanced options and fill in
+    - Set hostname (e.g. piquad3a or clairton3c)
+    - Enable SSH with username/password
+    - Set username (breathecam) and password
+    - Configure wifi (”wireless LAN”) to connect to your local network
+    - Wireless LAN country: US
+    - Set locale settings: time zone America/New_York, keyboard US
+
+Install card and boot
+
+scp ~/.ssh/breathecam_ed
+
+
+
+------------------------
+
 - install raspbian (download from https://www.raspberrypi.org/)
   Set hostname to camera id
         [cameraname][elementname]
