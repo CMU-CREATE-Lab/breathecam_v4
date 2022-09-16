@@ -137,7 +137,10 @@ def zerotier_join_network(network):
 
 zerotier_join_network("db64858fedb73ddd")
 
+print("Halt breathecam services (if running)")
+shell_cmd("./kill_all.sh")
 print("Testing image capture")
 shell_cmd(f"{python} imageService.py --test-only")
-
+print("Start breathecam services")
+subprocess.run("./run_all.sh", shell=True)
 update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
