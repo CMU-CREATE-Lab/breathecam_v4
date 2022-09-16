@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import getpass, os, subprocess
+import getpass, os, socket, subprocess, sys, time
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 username = getpass.getuser()
@@ -80,6 +80,7 @@ if parse_kernel_version(kernel_version) < parse_kernel_version(minimum_kernel_ve
     raise(Exception(msg))
 
 
+
 if os.path.exists(os.path.expanduser("~/pi-monitor")):
     print("Updating pi-monitor")
     shell_cmd("~/pi-monitor/update.py")
@@ -94,8 +95,6 @@ python = "/usr/bin/python3"
 print("Disable GUI and require login password")
 shell_cmd("sudo raspi-config nonint do_boot_behaviour B1")
 
-update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
-
 # Randy's public key
 install_ssh_key("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAHTlbKK+xkcgmCPGayAtRaEeisB+zbaaPUtz4hCi9jJIZP9PGTtqYNN/3DYzoegBerYx7It7jLaj1PnBqGkZdWIwgCpFOFJRvjf0qQU0IPFAyceV83Jj4cqTj6Xey3LmgLcNRuv3YeX2eIf+8QKrwy+rWUS3mIfQsWWGDrioCc6VDFSaw== rsargent@MacBook-Pro-94.local")
 
@@ -109,3 +108,36 @@ install_ssh_key("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGYlAWzLCoF5zyYN1IOFoSzsMit
 print("Enabling verbose text boot messages")
 shell_cmd("sudo sed --in-place s/quiet// /boot/cmdline.txt")
 shell_cmd("sudo sed --in-place s/splash// /boot/cmdline.txt")
+
+def zerotier_join_network(network):
+    try:
+        subprocess.check_output("sudo zerotier-cli listnetworks", shell=True)
+    except FileNotFoundError as e:
+        print("Installing zerotier")
+        shell_cmd("curl -s https://install.zerotier.com | sudo bash")
+
+    client_id = subprocess.check_output("sudo zerotier-cli info", shell=True, encoding="utf-8").split()[2]
+
+    while True:
+        shell_cmd(f"sudo zerotier-cli join {network}")
+        netinfo = subprocess.check_output(f"sudo zerotier-cli listnetworks | grep {network}", shell=True, encoding="utf-8")
+        print(netinfo)
+        if "ACCESS_DENIED" in netinfo:
+            hostname = socket.gethostname()
+            url = f"https://my.zerotier.com/network/{network}"
+            print(f"zerotier: PLEASE AUTHENTICATE CLIENT {client_id} (hostname {hostname}) for access to network {network} at {url}")
+        elif "REQUESTING_CONFIGURATION" in netinfo:
+            print("Waiting for response from zerotier server")
+        elif "OK" in netinfo:
+            print(f"zerotier: joined and authenticated to network {network}")
+            return
+        else:
+            print("Unknown reply from zerotier listnetworks")
+        time.sleep(5)
+
+zerotier_join_network("db64858fedb73ddd")
+
+print("Testing image capture")
+shell_cmd(f"{python} imageService.py --test-only")
+
+update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")

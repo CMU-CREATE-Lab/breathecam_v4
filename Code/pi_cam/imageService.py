@@ -2,6 +2,7 @@ import datetime
 import math
 import shutil
 import subprocess
+import sys
 from shutil import disk_usage
 import time
 import logging
@@ -13,15 +14,18 @@ from os.path import exists
 import ArducamMux
 
 class ImageService:
-    def __init__(self, config: ServiceConfig):
+    def __init__(self, config: ServiceConfig, test_only=False):
         self.config = config
+        self.test_only = test_only
         self.log = config.logger
         self.last_grab = 0
         bc = config.parser["breathecam"]
         self.camera_mux = int(bc["camera_mux"])
         self.mux_channels = [int(x) for x in bc["mux_channels"].split()]
         self.rotation = [int(x) for x in bc["rotation"].split()]
-        self.tuning_file = bc["tuning_file"]
+        # tuning_file path is relative to the directory of this script
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        self.tuning_file = os.path.join(script_dir, bc["tuning_file"])
         self.interval = int(bc["interval"]) # in seconds
 
     def checkDiskUsage(self):
@@ -86,14 +90,19 @@ class ImageService:
             self.log.info(f"Sleeping {sleep_duration * 1000:.0f}ms until {next_capture_time_fmt}")
             time.sleep(sleep_duration);
 
-            tmp_filename = f"{next_capture_time:.0f}-{os.getpid()}-tmp.jpg"
-            dest_filename = f"images/{next_capture_time:.0f}.jpg"
+            tmp_filename = f"{tmp_dir}/{next_capture_time:.0f}-{os.getpid()}-tmp.jpg"
+            dest_filename = f"{image_dir}/{next_capture_time:.0f}.jpg"
 
             before = time.time()
 
             picam2.capture_file(tmp_filename)
+            if self.test_only:
+                os.unlink(tmp_filename)
+                sys.exit(0)
             after = time.time()
             os.rename(tmp_filename, dest_filename)
+            open(f"{image_dir}/last_capture.timestamp","w").write("\n")
+            
             md = picam2.capture_metadata()
             sensor_time_epoch = md['SensorTimestamp']/1e9 - time.clock_gettime(time.CLOCK_BOOTTIME) + time.time()
             sensor_time_fmt = datetime.datetime.fromtimestamp(sensor_time_epoch).strftime('%H:%M:%S.%f')[:-3]
@@ -122,5 +131,12 @@ class ImageService:
 
 
 if __name__ == '__main__':
-    svc = ImageService(ServiceConfig('./', 'image'))
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    os.chdir(script_dir)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--test-only", action="store_true", help="Test image capture and exit")
+    args = parser.parse_args()
+
+    svc = ImageService(ServiceConfig('./', 'image'), test_only=args.test_only)
     svc.run()
