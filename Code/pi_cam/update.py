@@ -10,5 +10,6 @@ def shell_cmd(cmd):
     print(subprocess.check_output(cmd, shell=True, encoding="utf-8"))
 
 shell_cmd("git pull --rebase")
-shell_cmd("./install.py")
+subprocess.run("./install.py")
+
 
