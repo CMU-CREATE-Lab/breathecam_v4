@@ -15,7 +15,7 @@ log = config.logger
 BULK_UPLOAD_SIZE = 3
 
 while True:
-    time.sleep(0.1)
+    time.sleep(0.25)
 
     try:
         # We sort by modification time and don't send the most recent file, to
@@ -56,9 +56,6 @@ while True:
                 log.error("Upload failed: " + response2)
                 # lets not hammer the poor server if it is failing
                 time.sleep(5)
-        else:
-            log.debug("No images to upload...")
-            time.sleep(5)
 
     except Exception as e:
         # really any error
