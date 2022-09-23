@@ -29,7 +29,19 @@ If you're having a problem where the system fails soon after boot and is rapid-c
 
 
 
+### Setting up typescript compilation for webConsole.ts
 
+Install node and npm:
+
+    sudo apt install nodejs npm
+
+After git clone:
+
+    npm i
+
+First time (remove this section later):
+
+    npm install typescript --save-dev
 
 
 

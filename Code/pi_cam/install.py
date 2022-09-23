@@ -67,7 +67,7 @@ if not os.path.exists(config_file):
 
 print("Install apt package dependencies")
 shell_cmd("sudo apt update")
-shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2")
+shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2 python3-flask")
 
 print("Check kernel version")
 kernel_version = subprocess.check_output("uname -r", shell=True, encoding="utf-8").strip()

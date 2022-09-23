@@ -57,8 +57,8 @@ class ImageService:
         logging.getLogger('picamera2').setLevel(logging.WARNING)
 
         image_dir = self.config.image_dir()
-        tmp_dir = f"{image_dir}/tmp"
-        os.makedirs(tmp_dir, exist_ok=True)
+        current_dir = f"{image_dir}/current"
+        os.makedirs(current_dir, exist_ok=True)
         interval = self.config.interval()
         last_capture_time = 0
 
@@ -90,8 +90,11 @@ class ImageService:
             self.log.info(f"Sleeping {sleep_duration * 1000:.0f}ms until {next_capture_time_fmt}")
             time.sleep(sleep_duration);
 
-            tmp_filename = f"{tmp_dir}/{next_capture_time:.0f}-{os.getpid()}-tmp.jpg"
-            dest_filename = f"{image_dir}/{next_capture_time:.0f}.jpg"
+            tmp_filename = f"{current_dir}/{next_capture_time:.0f}-{os.getpid()}-tmp.jpg"
+            # Current image
+            current_filename = f"{current_dir}/current.jpg"
+            # File for upload
+            upload_filename = f"{image_dir}/{next_capture_time:.0f}.jpg"
 
             before = time.time()
 
@@ -100,13 +103,16 @@ class ImageService:
                 os.unlink(tmp_filename)
                 sys.exit(0)
             after = time.time()
-            os.rename(tmp_filename, dest_filename)
+            # Atomically replace current.jpg, for interactive display (e.g. focusing)
+            os.rename(tmp_filename, current_filename)
+            # Hard-link to image in "to be uploaded" directory
+            os.link(current_filename, upload_filename)
             open(f"{image_dir}/last_capture.timestamp","w").write("\n")
             
             md = picam2.capture_metadata()
             sensor_time_epoch = md['SensorTimestamp']/1e9 - time.clock_gettime(time.CLOCK_BOOTTIME) + time.time()
             sensor_time_fmt = datetime.datetime.fromtimestamp(sensor_time_epoch).strftime('%H:%M:%S.%f')[:-3]
-            self.log.info(f"{dest_filename} capture (exp {md['ExposureTime']/1000}ms, sensortime {sensor_time_fmt} took {(after - before) * 1000:.0f}ms")
+            self.log.info(f"{upload_filename} capture (exp {md['ExposureTime']/1000}ms, sensortime {sensor_time_fmt} took {(after - before) * 1000:.0f}ms")
 
             self.log.info(f"  metadata: {md}")
 
