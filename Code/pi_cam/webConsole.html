@@ -9,21 +9,36 @@
     #header {
         width: 100%;
         height: 30px;
-        background-color: palevioletred;
+        background-color: lightgrey;
     }
-    #imageContainer {
+    #slowFocusImageContainer {
         width: 100%;
         height: calc(100vh - 30px);
         background-color: palegreen;
         overflow: scroll;
     }
+    #zoomOutImage, #fastFocusImage {
+        max-width: 100%;
+        max-height: calc(100vh - 30px);
+    }
+    .radioButtonHighlightSelected {
+        border: 3px solid red;
+        background-color: yellow;
+    }
 </style>
 </head>
 <body>
-    <div id="header">header</div>
-    <div id="imageContainer">
-        <img id="image">
+    <div id="header">
+        Select:
+        <button id="zoomOutButton">Zoom out</button>
+        <button id="slowFocusButton">Slow focus view</button>
+        <button id="fastFocusButton">Fast focus view (pauses capture)</button>
     </div>
+    <image id="zoomOutImage", style="display:none"></image>
+    <div id="slowFocusImageContainer" style="display:none">
+        <img id="slowFocusImage" style="display:none">
+    </div>
+    <image id="fastFocusImage", style="display:none"></image>
 </body>
 <script src="compiled/webConsole.js"></script>
 </html>
