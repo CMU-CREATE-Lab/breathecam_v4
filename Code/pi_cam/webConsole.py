@@ -1,4 +1,5 @@
 import flask, json, os, struct, threading, time
+from scrollpos import read_scrollpos, write_scrollpos
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
@@ -31,19 +32,10 @@ def current_stream():
     return stream_jpgs(), {"Content-Type":f"application/octet-stream"}
 
 @app.post("/writeScrollpos")
-def write_scrollpos():
-    pos = flask.request.get_json()
-    tmpnam = f"scrollpos-tmp-{os.getpid()}-{threading.get_ident()}.json"
-    json.dump(pos, open(tmpnam, "w"))
-    os.rename(tmpnam, "scrollpos.json")
+def write_scrollpos_api():
+    write_scrollpos(flask.request.get_json())
     return flask.jsonify(success=True);
 
 @app.get("/readScrollpos")
-def read_scrollpos():
-    try:
-        sp = json.load(open("scrollpos.json"))
-        pos = dict(x=sp['x'], y=sp['y'])
-    except Exception as e:
-        print(f"Got exception reading scrollpos.json; returning default ({e})")
-        pos = dict(x=0, y=0)
-    return flask.jsonify(pos)
+def read_scrollpos_api():
+    return flask.jsonify(read_scrollpos())

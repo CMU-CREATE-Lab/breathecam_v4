@@ -12,6 +12,8 @@ from picamera2 import Picamera2
 import libcamera
 from os.path import exists
 import ArducamMux
+from euclid import *
+from scrollpos import *
 
 class ImageService:
     def __init__(self, config: ServiceConfig, test_only=False):
@@ -32,28 +34,63 @@ class ImageService:
         wot = disk_usage(self.config.base_dir())
         return wot.used / wot.total
 
+    def fastVideoFocusIfRequested(self):
+        self.picam2.stop()
+        self.picam2.configure(self.fast_focus_config)
+ 
+        sensor_res = Vector2(*self.picam2.sensor_resolution)
+        zoom_window_size = Vector2(640, 480)
+        scrollpos = read_scrollpos() # 0-1 in x and y, representing center of zoom
+        desired_center_pixel = Vector2(scrollpos.x * sensor_res.x, scrollpos.y * sensor_res.y)
+        desired_upper_left = desired_center_pixel - zoom_window_size / 2
+        min_valid = Vector2(0,0)
+        max_valid = sensor_res - zoom_window_size
+        actual_upper_left = Vector2(
+            min(max(desired_upper_left.x, min_valid.x), max_valid.x),
+            min(max(desired_upper_left.y, min_valid.y), max_valid.y)
+        )
+        self.picam2.set_controls({"ScalerCrop": [actual_upper_left.x, actual_upper_left.y, zoom_window_size.x, zoom_window_size.y]})
+        self.picam2.start()
+
+        before = time.time()
+        print("yo3")
+        self.picam2.capture_file("frame1.jpg")
+        print("yo4")
+        self.picam2.capture_file("frame2.jpg")
+        self.picam2.capture_file("frame3.jpg")
+        self.picam2.capture_file("frame4.jpg")
+        self.picam2.capture_file("frame5.jpg")
+        print(f"Capture of 5 frames took {(time.time() - before)*1000:.0f}ms")
+        self.picam2.stop()
+        self.picam2.configure(self.still_config)
+        self.picam2.start()
+        self.picam2.capture_file("frame6.jpg")
+
     def grabLoop(self):
         self.log.info(f"Instantiating Picamera2 with tuning file {self.tuning_file}")
-        picam2 = Picamera2(tuning=self.tuning_file)
+        self.picam2 = Picamera2(tuning=self.tuning_file)
         transform = libcamera.Transform(rotation=self.rotation[0])
 
         # preview defaults to lower resolution, auto-exposure and auto-white-balance
-        preview_config = picam2.create_preview_configuration()
+        preview_config = self.picam2.create_preview_configuration()
         preview_config["transform"] = transform
-        picam2.configure(preview_config)
+        self.picam2.configure(preview_config)
 
-        picam2.start()
+        self.picam2.start()
         self.log.info("Running for 2 seconds in preview move to lock auto exposure")
         time.sleep(2)
-        picam2.stop()
+        self.picam2.stop()
+
+        self.fast_focus_config = self.picam2.create_preview_configuration()
+        self.fast_focus_config["transform"] = transform
 
         self.log.info("Reconfiguring camera for still")
         # still defaults to full-resolution, auto-exposure and auto-white-balance
-        still_config = picam2.create_still_configuration()
-        still_config["transform"] = transform
-        picam2.configure(still_config)
+        self.still_config = self.picam2.create_still_configuration()
+        self.still_config["transform"] = transform
+        self.picam2.configure(self.still_config)
 
-        picam2.start()
+        self.picam2.start()
         logging.getLogger('picamera2').setLevel(logging.WARNING)
 
         image_dir = self.config.image_dir()
@@ -61,6 +98,9 @@ class ImageService:
         os.makedirs(current_dir, exist_ok=True)
         interval = self.config.interval()
         last_capture_time = 0
+
+        self.fastVideoFocusIfRequested()
+        exit(0)
 
         while True:
             usage = self.checkDiskUsage()
@@ -98,7 +138,7 @@ class ImageService:
 
             before = time.time()
 
-            picam2.capture_file(tmp_filename)
+            self.picam2.capture_file(tmp_filename)
             if self.test_only:
                 os.unlink(tmp_filename)
                 sys.exit(0)
@@ -109,7 +149,7 @@ class ImageService:
             os.link(current_filename, upload_filename)
             open(f"{image_dir}/last_capture.timestamp","w").write("\n")
             
-            md = picam2.capture_metadata()
+            md = self.picam2.capture_metadata()
             sensor_time_epoch = md['SensorTimestamp']/1e9 - time.clock_gettime(time.CLOCK_BOOTTIME) + time.time()
             sensor_time_fmt = datetime.datetime.fromtimestamp(sensor_time_epoch).strftime('%H:%M:%S.%f')[:-3]
             self.log.info(f"{upload_filename} capture (exp {md['ExposureTime']/1000}ms, sensortime {sensor_time_fmt} took {(after - before) * 1000:.0f}ms")

@@ -1,0 +1,35 @@
+Phase 4:  Implement fast focus mode?
+    DONE capture fast low-res video
+    DONE capture zoomed-in high-res video snippet
+    zoom 640x480 around slow-focus-selected center
+        read/write focus in library file?
+    implement endpoint in capture python
+        serve unix socket
+        server die after 5 minutes
+        webserver grab unix socket on request
+        close unix socket when web connection dies
+
+
+        use unix socket
+            how to guarantee buffering is okay?
+    - have some sort of timeout to switch back?
+- client pops back to slow focus when losing connection
+
+Phase 5:  Add local wifi access point?
+
+
+Phase 6:  Auto-discover all cameras from remote website?
+- upload/ping API record local camera IP addresses and names
+- access remote website will create links for local cameras
+
+Phase 6:  "Show all local cameras" mode?
+
+DONE Phase 3:  Figure out why vizy1 stopped finding the camera on boot
+
+DONE Phase 2:
+    DONE have streamforever check radio buttons for change;  if changed, abort
+    DONE streamforever makes image display again
+    DONE streamforever called in a loop
+    DONE callback for switching mode does css mods.  makes image display=none
+
+
