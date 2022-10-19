@@ -67,7 +67,7 @@ if not os.path.exists(config_file):
 
 print("Install apt package dependencies")
 shell_cmd("sudo apt update")
-shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2 python3-flask")
+shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2 npm")
 
 print("Check kernel version")
 kernel_version = subprocess.check_output("uname -r", shell=True, encoding="utf-8").strip()
@@ -79,8 +79,6 @@ if parse_kernel_version(kernel_version) < parse_kernel_version(minimum_kernel_ve
     print(msg)
     raise(Exception(msg))
 
-
-
 if os.path.exists(os.path.expanduser("~/pi-monitor")):
     print("Updating pi-monitor")
     shell_cmd("~/pi-monitor/update.py")
@@ -88,7 +86,6 @@ else:
     print("Installing pi-monitor")
     shell_cmd("cd ~ && git clone --recursive https://github.com/CMU-CREATE-Lab/pi-monitor.git")
     shell_cmd("~/pi-monitor/install.py")
-
 
 python = "/usr/bin/python3"
 
@@ -100,6 +97,10 @@ if os.path.exists("/usr/local/bin/flask"):
 
 print("Disable GUI and require login password")
 shell_cmd("sudo raspi-config nonint do_boot_behaviour B1")
+
+# Node and typescript
+print("Installing/updating node dependencies (e.g. typescript compiler)")
+shell_cmd("npm i")
 
 # Randy's public key
 install_ssh_key("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAHTlbKK+xkcgmCPGayAtRaEeisB+zbaaPUtz4hCi9jJIZP9PGTtqYNN/3DYzoegBerYx7It7jLaj1PnBqGkZdWIwgCpFOFJRvjf0qQU0IPFAyceV83Jj4cqTj6Xey3LmgLcNRuv3YeX2eIf+8QKrwy+rWUS3mIfQsWWGDrioCc6VDFSaw== rsargent@MacBook-Pro-94.local")
