@@ -3,6 +3,8 @@
 
 cd /home/breathecam/breathecam/Code/pi_cam
 
+sudo su -c "/usr/local/bin/flask --app webConsole run --host=0.0.0.0 --port=8000" breathecam &
+
 sudo su -c "mkdir -p logs" breathecam
 
 # pingServer_launcher needs to run as root so that it can reboot

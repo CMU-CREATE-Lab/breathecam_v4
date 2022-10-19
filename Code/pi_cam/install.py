@@ -92,6 +92,12 @@ else:
 
 python = "/usr/bin/python3"
 
+print("Ensuring flask version >=2.2")
+if os.path.exists("/usr/bin/flask"):
+    shell_cmd(f"sudo apt remove python3-flask")
+if os.path.exists("/usr/local/bin/flask"):
+    shell_cmd(f"sudo {python} -m pip install 'Flask>=2.2'")
+
 print("Disable GUI and require login password")
 shell_cmd("sudo raspi-config nonint do_boot_behaviour B1")
 

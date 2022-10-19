@@ -20,3 +20,4 @@ sudo pkill -f imageService.py
 sudo pkill -f udpPinger.py
 sudo pkill -f uploadToServer.py
 sudo pkill -f libcamera-still
+sudo pkill -f webConsole
