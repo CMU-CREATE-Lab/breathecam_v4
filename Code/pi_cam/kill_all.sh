@@ -5,18 +5,19 @@ cd /home/breathecam/breathecam/Code/pi_cam
 # Kill launcher processes first to make sure they don't respawn the service
 # after we kill it.
 echo "Killing launchers:"
-pkill -f pingServer_launcher.sh
-pkill -f remoteDesktop_launcher.sh
-pkill -f imageService_launcher.sh
-pkill -f udpPinger_launcher.sh
-pkill -f uploadToServer_launcher.sh
+sudo pkill -f pingServer_launcher.sh
+sudo pkill -f remoteDesktop_launcher.sh
+sudo pkill -f imageService_launcher.sh
+sudo pkill -f udpPinger_launcher.sh
+sudo pkill -f uploadToServer_launcher.sh
 
 sleep 1
 
 echo "Killing services:"
-pkill -f pingServer.py
+sudo pkill -f pingServer.py
 #pkill -f ??? remote desktop
-pkill -f imageService.py
-pkill -f udpPinger.py
-pkill -f uploadToServer.py
-pkill -f libcamera-still
+sudo pkill -f imageService.py
+sudo pkill -f udpPinger.py
+sudo pkill -f uploadToServer.py
+sudo pkill -f libcamera-still
+sudo pkill -f webConsole

@@ -1,4 +1,54 @@
-RPI SETUP
+# RPI SETUP
+
+### Create raspbian image with Raspberry Pi Imager
+
+- Select 32-bit raspbian
+
+- Click on Advanced options and fill in
+    - Set hostname (e.g. piquad3a or clairton3c)
+    - Enable SSH with username/password
+    - Set username (breathecam) and password
+    - Configure wifi (”wireless LAN”) to connect to your local network
+    - Wireless LAN country: US
+    - Set locale settings: time zone America/New_York, keyboard US
+
+### Install card and boot
+
+    ssh breathecam@<newhostname>
+    sudo apt update -y && sudo apt upgrade -y
+    git clone --recursive https://github.com/CMU-CREATE-Lab/breathecam_v4.git breathecam
+    cd breathecam/Code/pi_cam && cp config_files/breathecam.ini-example config_files/breathecam.ini
+    # Customize
+    nano config_files/breathecam.ini
+    ./install.py
+
+# Remotely disable startup on boot
+
+If you're having a problem where the system fails soon after boot and is rapid-cycle rebooting, consider trying to get back control of it by remotely disabling startup.  Even if you have a 1-2 second window before reboot, you can try this multiple times until it works.
+
+    ssh piquad3a.local "echo '' | sudo crontab -"
+
+
+
+### Setting up typescript compilation for webConsole.ts
+
+Install node and npm:
+
+    sudo apt install nodejs npm
+
+After git clone:
+
+    npm i
+
+First time (remove this section later):
+
+    npm install typescript --save-dev
+
+
+
+
+
+------------------------
 
 - install raspbian (download from https://www.raspberrypi.org/)
   Set hostname to camera id

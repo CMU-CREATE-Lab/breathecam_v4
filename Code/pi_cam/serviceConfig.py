@@ -25,9 +25,9 @@ class ServiceConfig:
         self._interval = ""
 
         # ConfigParser for breathecam.ini
-        self.parser = []
+        self.parser: configparser.ConfigParser = None
         # Logger instance for this service
-        self.logger = []
+        self.logger: logging.Logger = None
 
         self._wait_for_time()
         self._read_config()
