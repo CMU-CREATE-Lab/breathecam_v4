@@ -1,9 +1,8 @@
 # RPI SETUP
 
-### Create raspbian image with Raspberry Pi Imager
+### Create raspbian image with Raspberry Pi Imager v1.7.3 or later
 
-- Select 32-bit raspbian
-
+- Select "Raspberry Pi OS (32-bit)", released 2022-09-22 or later
 - Click on Advanced options and fill in
     - Set hostname (e.g. piquad3a or clairton3c)
     - Enable SSH with username/password
