@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import argparse, getpass, os, socket, subprocess, sys, time
+import argparse, getpass, os, socket, subprocess, re, time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--upgrade-os', action='store_true', help='Upgrade os with apt update && apt upgrade')
@@ -68,15 +68,47 @@ config_file_example = "config_files/breathecam.ini-example"
 
 if not os.path.exists(config_file):
     shell_cmd(f"cp {config_file_example} {config_file}")
-    shell_cmd(f"nano {config_file}")
+    print(f"Copied {config_file_example} to {config_file}")
+    print(f"Please make any needed modifications to {config_file}")
+    print("Opening nano in 2 seconds...")
+    time.sleep(2)
+    subprocess.run(f"nano {config_file}", shell=True)
     assert os.path.exists(config_file)
+
+def zerotier_join_network(network):
+    try:
+        subprocess.check_output("sudo zerotier-cli listnetworks", shell=True)
+    except:
+        print("Installing zerotier")
+        shell_cmd("curl -s https://install.zerotier.com | sudo bash")
+
+    client_id = subprocess.check_output("sudo zerotier-cli info", shell=True, encoding="utf-8").split()[2]
+
+    while True:
+        shell_cmd(f"sudo zerotier-cli join {network}")
+        netinfo = subprocess.check_output(f"sudo zerotier-cli listnetworks | grep {network}", shell=True, encoding="utf-8")
+        print(netinfo)
+        if "ACCESS_DENIED" in netinfo:
+            hostname = socket.gethostname()
+            url = f"https://my.zerotier.com/network/{network}"
+            print(f"zerotier: PLEASE AUTHENTICATE CLIENT {client_id} (hostname {hostname}) for access to network {network} at {url}")
+        elif "REQUESTING_CONFIGURATION" in netinfo:
+            print("Waiting for response from zerotier server")
+        elif "OK" in netinfo:
+            print(f"zerotier: joined and authenticated to network {network}")
+            return
+        else:
+            print("Unknown reply from zerotier listnetworks")
+        time.sleep(5)
+
+zerotier_join_network("db64858fedb73ddd")
 
 print("Install apt package dependencies")
 shell_cmd("sudo apt update")
 if args.upgrade_os:
     shell_cmd("sudo apt upgrade -y")
 
-shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2 npm emacs")
+shell_cmd("sudo apt install -y libcamera0 python3-libcamera python3-pip libimage-exiftool-perl python3-picamera2 npm emacs")
 
 print("Check kernel version")
 kernel_version = subprocess.check_output("uname -r", shell=True, encoding="utf-8").strip()
@@ -84,9 +116,22 @@ kernel_version = kernel_version.split("-")[0]
 minimum_kernel_version = "5.15.61"
 
 if parse_kernel_version(kernel_version) < parse_kernel_version(minimum_kernel_version):
-    msg = f"Require kernel version >= 5.15.61 but have {kernel_version}.  Use sudo apt update && sudo apt upgrade"
+    msg = f"Require kernel version >= 5.15.61 but have {kernel_version}.  Use install.py --upgrade-os"
     print(msg)
     raise(Exception(msg))
+
+# Returns True if added, False if already present
+def add_line_to_boot_config_txt_if_needed(line):
+    content = open("/boot/config.txt").read()
+    for l in content.splitlines():
+        if l.strip() == line:
+            print(f"'{line}' already in /boot/config.txt") 
+            return False
+    print(f"Adding '{line}' to /boot/config.txt")
+    subprocess.check_output(f"echo '\n# Added by breathecam installer\n{line}\n' | sudo tee -a /boot/config.txt", shell=True)
+    return True
+
+updated_boot_config = add_line_to_boot_config_txt_if_needed("dtoverlay=imx477")
 
 if os.path.exists(os.path.expanduser("~/pi-monitor")):
     print("Updating pi-monitor")
@@ -125,36 +170,42 @@ print("Enabling verbose text boot messages")
 shell_cmd("sudo sed --in-place s/quiet// /boot/cmdline.txt")
 shell_cmd("sudo sed --in-place s/splash// /boot/cmdline.txt")
 
-def zerotier_join_network(network):
-    try:
-        subprocess.check_output("sudo zerotier-cli listnetworks", shell=True)
-    except:
-        print("Installing zerotier")
-        shell_cmd("curl -s https://install.zerotier.com | sudo bash")
+# Detect reboot is required
 
-    client_id = subprocess.check_output("sudo zerotier-cli info", shell=True, encoding="utf-8").split()[2]
+def find_installed_kernel_version():
+    for line in subprocess.check_output("dpkg -L raspberrypi-kernel", shell=True, encoding="utf8").splitlines():
+        if match := re.match("/lib/modules/(\d+\.\d+\.\d+)", line):
+            return match[1]
+    raise "Could not find installed kernel version"
 
-    while True:
-        shell_cmd(f"sudo zerotier-cli join {network}")
-        netinfo = subprocess.check_output(f"sudo zerotier-cli listnetworks | grep {network}", shell=True, encoding="utf-8")
-        print(netinfo)
-        if "ACCESS_DENIED" in netinfo:
-            hostname = socket.gethostname()
-            url = f"https://my.zerotier.com/network/{network}"
-            print(f"zerotier: PLEASE AUTHENTICATE CLIENT {client_id} (hostname {hostname}) for access to network {network} at {url}")
-        elif "REQUESTING_CONFIGURATION" in netinfo:
-            print("Waiting for response from zerotier server")
-        elif "OK" in netinfo:
-            print(f"zerotier: joined and authenticated to network {network}")
-            return
-        else:
-            print("Unknown reply from zerotier listnetworks")
-        time.sleep(5)
+def find_running_kernel_version():
+    return subprocess.check_output("uname -r", shell=True, encoding="utf8").split("-")[0]
 
-zerotier_join_network("db64858fedb73ddd")
+
+
 
 print("Halt breathecam services (if running)")
 shell_cmd("./kill_all.sh")
+
+need_reboot = False
+
+print("")
+
+if find_installed_kernel_version() != find_running_kernel_version():
+    print(f"Need reboot because installed kernel version {find_installed_kernel_version()} differs from running kernel version {find_running_kernel_version()}")
+    need_reboot = True
+
+if updated_boot_config:
+    print(f"Need reboot because /boot/config.txt was updated")
+    need_reboot = True
+
+if need_reboot:
+    print("YOU MUST REBOOT NOW TO COMPLETE INSTALLATION")
+    print("Press return to reboot, or ctrl-c to abort")
+    input()
+    print("REBOOTING NOW")
+    shell_cmd("sudo shutdown -r now")
+
 print("Testing image capture")
 shell_cmd(f"{python} imageService.py --test-only")
 print("Start breathecam services")
