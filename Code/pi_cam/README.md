@@ -21,7 +21,7 @@
     # cd breathecam/Code/pi_cam && cp config_files/breathecam.ini-example config_files/breathecam.ini
     # 
     # nano config_files/breathecam.ini
-    ./install.py --upgrade-os
+    breathecam/Code/pi_cam/install.py --upgrade-os
     # Edit default breathecam.ini when prompted
     # Reboot if necessary
 
