@@ -7,6 +7,8 @@ parser.add_argument('--upgrade-os', action='store_true', help='Upgrade os with a
 args = parser.parse_args()
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
+os.chdir(script_dir)
+
 username = getpass.getuser()
 
 def shell_cmd(cmd):
@@ -199,18 +201,21 @@ if updated_boot_config:
     print(f"Need reboot because /boot/config.txt was updated")
     need_reboot = True
 
+if not need_reboot:
+    print("Testing image capture")
+    shell_cmd(f"{python} imageService.py --test-only")
+    print("Start breathecam services")
+    subprocess.run("./run_all.sh", shell=True)
+    time.sleep(5)
+
+update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
+
 if need_reboot:
     print("YOU MUST REBOOT NOW TO COMPLETE INSTALLATION")
     print("Press return to reboot, or ctrl-c to abort")
     input()
     print("REBOOTING NOW")
     shell_cmd("sudo shutdown -r now")
-
-print("Testing image capture")
-shell_cmd(f"{python} imageService.py --test-only")
-print("Start breathecam services")
-subprocess.run("./run_all.sh", shell=True)
-time.sleep(5)
-update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
+    
 print("install.py DONE")
 
