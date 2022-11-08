@@ -12,14 +12,18 @@
     - Set locale settings: time zone America/New_York, keyboard US
 
 ### Install card and boot
+    First boot takes a long time.  Wait 30 secs or so, until green light is approximately idle
 
     ssh breathecam@<newhostname>
-    sudo apt update -y && sudo apt upgrade -y
+    sudo apt install git
+    #sudo apt update -y && sudo apt upgrade -y
     git clone --recursive https://github.com/CMU-CREATE-Lab/breathecam_v4.git breathecam
-    cd breathecam/Code/pi_cam && cp config_files/breathecam.ini-example config_files/breathecam.ini
-    # Customize
-    nano config_files/breathecam.ini
-    ./install.py
+    # cd breathecam/Code/pi_cam && cp config_files/breathecam.ini-example config_files/breathecam.ini
+    # 
+    # nano config_files/breathecam.ini
+    ./install.py --upgrade-os
+    # Edit default breathecam.ini when prompted
+    # Reboot if necessary
 
 # Remotely disable startup on boot
 

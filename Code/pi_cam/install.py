@@ -1,6 +1,10 @@
 #!/usr/bin/python3
 
-import getpass, os, socket, subprocess, sys, time
+import argparse, getpass, os, socket, subprocess, sys, time
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--upgrade-os', action='store_true', help='Upgrade os with apt update && apt upgrade')
+args = parser.parse_args()
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 username = getpass.getuser()
@@ -60,14 +64,19 @@ def parse_kernel_version(version):
     return [int(n) for n in version.split(".")]
 
 config_file = "config_files/breathecam.ini"
+config_file_example = "config_files/breathecam.ini-example"
+
 if not os.path.exists(config_file):
-    msg = f"You must create {config_file} before running install.py.\nYou may copy and modify from breathecam.ini-example."
-    print(msg)
-    raise Exception(msg)
+    shell_cmd(f"cp {config_file_example} {config_file}")
+    shell_cmd(f"nano {config_file}")
+    assert os.path.exists(config_file)
 
 print("Install apt package dependencies")
 shell_cmd("sudo apt update")
-shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2 npm")
+if args.upgrade_os:
+    shell_cmd("sudo apt upgrade -y")
+
+shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2 npm emacs")
 
 print("Check kernel version")
 kernel_version = subprocess.check_output("uname -r", shell=True, encoding="utf-8").strip()
