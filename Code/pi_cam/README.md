@@ -16,14 +16,9 @@
 
     ssh breathecam@<newhostname>
     git --version || sudo apt install git
-    #sudo apt update -y && sudo apt upgrade -y
     git clone --recursive https://github.com/CMU-CREATE-Lab/breathecam_v4.git breathecam
-    # cd breathecam/Code/pi_cam && cp config_files/breathecam.ini-example config_files/breathecam.ini
-    # 
-    # nano config_files/breathecam.ini
     breathecam/Code/pi_cam/install.py --upgrade-os
     # Edit default breathecam.ini when prompted
-    # Reboot if necessary
 
 # Remotely disable startup on boot
 
