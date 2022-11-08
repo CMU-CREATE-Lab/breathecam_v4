@@ -15,7 +15,7 @@
     First boot takes a long time.  Wait 30 secs or so, until green light is approximately idle
 
     ssh breathecam@<newhostname>
-    git --version || sudo apt install git
+    git --version || sudo apt install -y git
     git clone --recursive https://github.com/CMU-CREATE-Lab/breathecam_v4.git breathecam
     breathecam/Code/pi_cam/install.py --upgrade-os
     # Edit default breathecam.ini when prompted
