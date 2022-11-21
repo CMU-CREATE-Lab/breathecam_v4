@@ -1,9 +1,7 @@
 # RPI SETUP
 
 ### Create raspbian image with Raspberry Pi Imager
-
 - Select 32-bit raspbian
-
 - Click on Advanced options and fill in
     - Set hostname (e.g. piquad3a or clairton3c)
     - Enable SSH with username/password
@@ -13,7 +11,6 @@
     - Set locale settings: time zone America/New_York, keyboard US
 
 ### Install card and boot
-
     ssh breathecam@<newhostname>
     sudo apt update -y && sudo apt upgrade -y
     git clone --recursive https://github.com/CMU-CREATE-Lab/breathecam_v4.git breathecam
@@ -43,9 +40,6 @@ After git clone:
 First time (remove this section later):
 
     npm install typescript --save-dev
-
-
-
 
 
 ------------------------
