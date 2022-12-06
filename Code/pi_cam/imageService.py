@@ -65,8 +65,8 @@ class ImageService:
         jpeg_quality = self.picam2.options.get("quality", 90)
         img.save(file_output, compress_level=png_compress_level, quality=jpeg_quality, exif=exif, format=format)
         end_time = time.monotonic()
-        self.picam2.log.info(f"Saved {self} to file {file_output}.")
-        self.picam2.log.info(f"Time taken for encode: {(end_time-start_time)*1000} ms.")
+        self.log.info(f"Saved {self} to file {file_output}.")
+        self.log.info(f"Time taken for encode: {(end_time-start_time)*1000} ms.")
 
     def capture_file_and_metadata(self, file_output, format=None):
         # Wait for next capture and get its Request, with metadata
