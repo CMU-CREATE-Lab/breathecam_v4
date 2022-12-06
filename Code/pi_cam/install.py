@@ -95,8 +95,13 @@ if os.path.exists("/usr/bin/flask"):
 if not os.path.exists("/usr/local/bin/flask"):
     shell_cmd(f"sudo {python} -m pip install 'Flask>=2.2'")
 
-print("Disable GUI and require login password")
-shell_cmd("sudo raspi-config nonint do_boot_behaviour B1")
+# We enable to GUI for VNC access, but it doesn't really start unless
+# we have a screen or somebody logs in on VNC.  So there is minimal
+# overhead when not used.
+print("Enable GUI, but require login password")
+shell_cmd("sudo raspi-config nonint do_boot_behaviour B3")
+# Turn on VNC access
+shell_cmd("sudo raspi-config nonint do_vnc 1")
 
 # Node and typescript
 print("Installing/updating node dependencies (e.g. typescript compiler)")
@@ -153,4 +158,3 @@ subprocess.run("./run_all.sh", shell=True)
 time.sleep(5)
 update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
 print("install.py DONE")
-
