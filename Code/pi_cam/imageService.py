@@ -74,7 +74,7 @@ class ImageService:
         self.log.info(f"Time taken for encode: {(end_time-start_time)*1000} ms.")
 
     def save_file_and_metadata(self, request: CompletedRequest, capture_timestamp: int):
-        image_dir = self.config.image_dir()
+        image_dir = self.config.image_dir().rstrip("/")
         current_dir = f"{image_dir}/current"
         os.makedirs(current_dir, exist_ok=True)
 
@@ -95,7 +95,7 @@ class ImageService:
         self.save_image(img, metadata, current_tmp_filename, format)
 
         if self.test_only:
-            os.unlink(tmp_filename)
+            os.unlink(current_tmp_filename)
             sys.exit(0)
 
         # Atomically replace current.jpg, for interactive display (e.g. focusing)
