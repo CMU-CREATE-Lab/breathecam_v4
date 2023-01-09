@@ -1,28 +1,40 @@
 % Script to compute the camera angles for overlapping fields of view with a
 % particular lens FOV.
 
-% Lens FOV in degrees.  You can use:
-%    https://www.scantips.com/lights/fieldofview.html
-% 
-% but it is very confusing UI.  The sensor format for the Pi HQ camera is
-% 1/2.3.  With this you can find the FOV for a particular focal length.
-%fov = 14; % 25mm
-fov = 21.83; % 16mm
+% Sensor size in mm, for 1/2.3 Sony chips like IMX477 in Pi HQ
+% camera. Other 1/2.3 sensors vary slightly.
+sensor_size = [6.287, 4.712];
+
+% Image size in pixels
+pixel_size = [4056, 3040];
+
+% Focal length in mm.
+focal_length = 16
+%focal_length = 25
+
+% Camera arrangement, number of cameras in the X and Y directions
+layout = [2 2]
+%layout = [4 1]
+
+% Angular field of view, see:
+% https://www.edmundoptics.com/knowledge-center/application-notes/imaging/understanding-focal-length-and-field-of-view/
+fov = 2*atan(sensor_size ./ (2*focal_length)) * (180/pi)
 
 % Overlap fraction between camera FOVs
-%overlap = 0.1
 overlap = 0.05;
 
-% Find camera angles relative to the theta(1) edge of the FOV (outer edge
-% of camera 1).
-theta(1) = fov/2;
-for ix = 2:4
-  theta(ix) = theta(ix-1) + fov - (fov*overlap);
+fov_total = [];
+theta = [];
+
+% Find camera angles relative to the center of the FOV (at zero degrees)
+for (dir = 1:2)
+  ncams = layout(dir);
+  fov_total(dir) = fov(dir) * (ncams - ((ncams - 1) * overlap));
+  theta(1, dir) = -(fov_total(dir)/2) + fov(dir)/2;
+  for (ix = 2:ncams)
+    theta(ix, dir) = theta(ix - 1, dir) + fov(dir)*(1 - overlap);
+  end
 end
 
-% Center the angles between camera 2 and 3 (i.e. in the middle of total
-% FOV).
-theta = theta - (theta(2) + theta(3))/2
-
-% This is the total FOV from one side to the other.
-fov_total = (theta(4) + fov/2) - (theta(1) - fov/2)
+fov_total
+theta

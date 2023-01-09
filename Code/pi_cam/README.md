@@ -6,9 +6,10 @@
     - Set hostname (e.g. piquad3a or clairton3c)
     - Enable SSH with username/password
     - Set username (breathecam) and password
-    - Configure wifi (”wireless LAN”) to connect to your local network
-    - Wireless LAN country: US
-    - Set locale settings: time zone America/New_York, keyboard US
+    [Do NOT set up wifi for actual install on field machines.  It can
+    do no good having wifi running inside the box.  It can't be
+    guaranteed that it *won't* connect, and it may create interference
+    inside the box.]
 
 ### Install card and boot
     ssh breathecam@<newhostname>
@@ -17,6 +18,15 @@
     cd breathecam/Code/pi_cam && cp config_files/breathecam.ini-example config_files/breathecam.ini
     # Customize
     nano config_files/breathecam.ini
+### set interval to 3
+### copy to /boot/config.txt
+# Added by breathecam installer
+dtoverlay=imx477
+
+dtoverlay=disable-wifi
+dtoverlay=disable-bt
+
+### reboot, seems to take a long time, several reboots before comes up on ssh?
     ./install.py
 
 # Remotely disable startup on boot

@@ -100,8 +100,8 @@ if not os.path.exists("/usr/local/bin/flask"):
 # overhead when not used.
 print("Enable GUI, but require login password")
 shell_cmd("sudo raspi-config nonint do_boot_behaviour B3")
-# Turn on VNC access
-shell_cmd("sudo raspi-config nonint do_vnc 1")
+# Turn on VNC access.  0 means on, for some reason.
+shell_cmd("sudo raspi-config nonint do_vnc 0")
 
 # Node and typescript
 print("Installing/updating node dependencies (e.g. typescript compiler)")
