@@ -94,7 +94,7 @@ class ServiceConfig:
     def log_dir(self):
         return self._base_dir + "logs/"
 
-    def image_dir(self):
+    def image_dir(self) -> str:
         return self._base_dir + "images/"
         
     def config_dir(self):
