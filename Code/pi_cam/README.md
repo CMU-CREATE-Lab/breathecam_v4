@@ -1,81 +1,65 @@
 # RPI SETUP
+  Set hostname to camera id
 
 ### Create raspbian image with Raspberry Pi Imager
 - Select 32-bit raspbian
 - Click on Advanced options and fill in
-    - Set hostname (e.g. piquad3a or clairton3c)
+    - Set hostname from camera name: [cameraname][elementname]
+      e.g. piquad3b where piquad3 is cameraname, and b is the
+      elementname (a being “primary”).
+        Current camera names for ecam: [http://ecam.cmucreatelab.org/status](http://ecam.cmucreatelab.org/status)
     - Enable SSH with username/password
     - Set username (breathecam) and password
-    [Do NOT set up wifi for actual install on field machines.  It can
-    do no good having wifi running inside the box.  It can't be
-    guaranteed that it *won't* connect, and it may create interference
-    inside the box.]
+    Do NOT set up wifi for actual install on field machines.  It
+    causes interference with the camera connections.
 
 ### Install card and boot
     ssh breathecam@<newhostname>
     sudo apt update -y && sudo apt upgrade -y
     git clone --recursive https://github.com/CMU-CREATE-Lab/breathecam_v4.git breathecam
     cd breathecam/Code/pi_cam && cp config_files/breathecam.ini-example config_files/breathecam.ini
-    # Customize
+    # Customize, eg. set grab interval
     nano config_files/breathecam.ini
-### set interval to 3
-### copy to /boot/config.txt
-# Added by breathecam installer
-dtoverlay=imx477
 
+### copy to /boot/config.txt
+### may not be necessary, depending
+dtoverlay=imx477
 dtoverlay=disable-wifi
 dtoverlay=disable-bt
 
-### reboot, seems to take a long time, several reboots before comes up on ssh?
+### reboot. This seems to take a long time, maybe several reboots
+### before comes up on ssh? 
     ./install.py
 
-# Remotely disable startup on boot
+
+# Remotely disabling startup on boot
 
 If you're having a problem where the system fails soon after boot and is rapid-cycle rebooting, consider trying to get back control of it by remotely disabling startup.  Even if you have a 1-2 second window before reboot, you can try this multiple times until it works.
 
     ssh piquad3a.local "echo '' | sudo crontab -"
 
 
-
 ### Setting up typescript compilation for webConsole.ts
-
+### [I think this is set up by install.py]
 Install node and npm:
-
     sudo apt install nodejs npm
 
 After git clone:
-
     npm i
 
 First time (remove this section later):
-
     npm install typescript --save-dev
 
 
-------------------------
 
-- install raspbian (download from https://www.raspberrypi.org/)
-  Set hostname to camera id
-        [cameraname][elementname]
-        e.g. piquad3b where piquad3 is cameraname, and b is the elementname (a being “primary”)
-  Current camera names for ecam: [http://ecam.cmucreatelab.org/status](http://ecam.cmucreatelab.org/status)
-  - nikonCamera**N**: Nikon cameras
-  - piquad**N**: New generation pi “quad” cameras
-  
-  NOTE: Arducam may require a specific patched kernel distribution, see below.
-- update and upgrade and install dependencies
-	> sudo apt-get update
-	> sudo apt-get upgrade
-    > sudo apt install libfmt-dev libboost-program-options-dev libcamera-dev libjpeg62-turbo-dev libexif-dev emacs
-- remove GUI (allow to reboot)
-	> sudo raspi-config
-	  Settings:
-	    Interfaces/enable VNC
-	    System/boot to desktop, auto login off
-	    Can set VNC display resolution to eg. 1280x1024
-	    Set hostname? xxx.breathecam.local
-	    Can set up wifi for debugging
-	> sudo reboot
+### Misc connands/notes:
+- > sudo raspi-config
+  Settings:
+    Interfaces/enable VNC
+    System/boot to desktop, auto login off
+    Can set VNC display resolution to eg. 1280x1024
+    Set hostname? xxx.breathecam.local
+    Can set up wifi for debugging
 - git clone https://github.com/CMU-CREATE-Lab/breathecam_v4.git breathecam
 - changing hostname (if necessary)
     > sudo hostnamectl set-hostname NEWHOSTNAME --static
@@ -83,14 +67,9 @@ First time (remove this section later):
 - build
     > cd breathecam/Code/pi_cam_grab
     > make
-- cd to rpi code tree
-     	> cd breathecam/Code/pi_cam
 - launch breathecam on boot
 	> sudo crontab -e	(add following to the bottom)
 		@reboot /home/breathecam/breathecam/Code/pi_cam/run_all.sh
-- per-host config, see below
-- reboot and test
-	> sudo reboot
 
 Each Pi4b board has several LEDs:
 
@@ -98,50 +77,34 @@ Each Pi4b board has several LEDs:
 * Tiny green LED:  flashes when accessing SD card
 * Large green LEDs on ethernet:  flashes when uploading images
 
-Kernel and firmware:
 
-There seem to be some issues with the new libcamera-based interfaces.  These
-are now standard, and are also being used in some form by Arducam.
-
-Some special configuration may be needed for Arducam:
- -- For the 18 MP Arducam camera I had to use a specific system binary
-    distribution (recompiling the kernel is also supposed to work).
- -- For the the Arducam mini HQ-camera I found that I had to:
-        sudo rpi-update
-    This updates to the latest dev kernel, and also updates the
-    video firmware.  This camera seems not to be identical to the official
-    Raspberry Pi HQ camera, even though it uses the same sensor.
-    Also see boot_config.txt for "ram" config.txt patches in video
-    config. camera_auto_detect is off, some dtoverlay needed.
- -- For the "Arducam multi-camera adapter board V2.2" the i2c_vc=on is
-    needed, this enables an i2c port on the media controller. Regular
-    i2c and the camera interfaces are also enabled, but that already
-    seems to be the default.
-
-
-Arducam multi-camera adapter B012001 (multiplexer):
-
+### Arducam multi-camera adapter B012001 (multiplexer):
+[We are not using this board anymore]
 This switches between four cameras at a pretty low level. Whichever
 camera is selected then appears as camera 0 for libcamera-still, etc.
 
 See:
     https://www.arducam.com/docs/cameras-for-raspberry-pi/multi-camera-adapter-board/multi-camera-adapter-board-v2-1/
 But you don't need any of their code or suggested installs except to
-run their demos (not sure about wiringpi).
+run their demos.
+
+In config.txt, for the "Arducam multi-camera adapter board V2.2"
+i2c_vc=on is needed, this enables an i2c port on the media
+controller. Regular i2c and the camera interfaces are also enabled,
+but that already seems to be the default.
 
 
 Per-host config and SD copying:
 
-Except for per-host config much of this setup can be gotten by copying the SD
-card: "Start/Accessories/SD card copier".  This config is per-host and needs
-to be repeated:
- -- edit breathecam/Code/pi_cam/config_files/breathecam.ini to set "camera_id"
- -- install remote access, see below.
+Except for per-host config all of the setup can be gotten by copying
+the SD card: "Start/Accessories/SD card copier".  Currently the only
+per-host config resetting the zerotier identity.  But startung using
+install.py insures that we know how to regenerate the configuration.
 
 
 Remote access:
 
-We are currently using ZeroTier. Paul Dille says:
+We are currently using ZeroTier.
 ________________________________________________________________
 On any Linux machine, it can be installed via:
 
@@ -214,15 +177,9 @@ The lenses should be pre-focused on a distant subject before taking the camera
 out for installation.  This works best using a small ROI (region of interest)
 with the libcamera-still preview mode, since this gives a high magnification
 and update rate.
-    libcamera-still -t 0 --roi 0.1,0.1,0.5,0.5
+    libcamera-still -t 0 --roi 0.5,0.5,0.1,0.1
 
-This gives (maybe) a 10x zoom (0.1) at the middle of the frame (0.5).  You can
-move the ROI if needed.  Zoom is "maybe" because there seems to be a limit to
-the smallest ROI.  Adding --qt-preview gives a smaller window which will
-update faster over a VNC conncetion.  --qt-preview may also work when the
-default display doesn't.
-
-
-TODO:
- -- Watchdog for capture failing does not work with multi-camera when
-    at least one camera is working.
+This gives) a 10x zoom (0.1) at the middle of the frame (0.5).  You
+can move the ROI if needed.  Adding --qt-preview gives a smaller
+window which will update faster over a VNC connection.  --qt-preview
+may also work when the default display doesn't.
