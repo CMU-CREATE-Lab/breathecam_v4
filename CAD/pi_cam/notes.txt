@@ -1,3 +1,28 @@
+[13 Feb 23]
+
+Having problems with image overlap changing during the day, perhaps
+especially when cold.  What amount of mechanical change do we need to
+cause this pointing error?
+
+I don't have solid numbers, but let's say 10 pixels.
+
+14.3 degrees FOV:
+>> 14.3 / 4056 * pi / 180  ==> 6.1534e-05 (rad/pixel) or 615 urad
+
+So 610 urad for 10 pixels
+
+If I measure 12.5 um over 3cm, then that is:
+>> 12.5e-6/3e-2 => 0.00041667 or 417 urad
+
+This is very much in the same ballpark.  The baseline is pretty
+uncertain since what we really have is bowing, and not clear what part
+to measure.  Ideally would measure at the camera mount plane,
+currently measuring at the front center of the camera mount vs. 3
+point support near the edges (on the back).
+
+
+[old]
+
 Pi 4 dimensions:
 
 Needs approx 2.1mm below board

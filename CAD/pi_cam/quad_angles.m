@@ -9,12 +9,12 @@ sensor_size = [6.287, 4.712];
 pixel_size = [4056, 3040];
 
 % Focal length in mm.
-focal_length = 16
-%focal_length = 25
+%focal_length = 16
+focal_length = 25
 
 % Camera arrangement, number of cameras in the X and Y directions
-layout = [2 2]
-%layout = [4 1]
+%layout = [2 2]
+layout = [4 1]
 
 % Angular field of view, see:
 % https://www.edmundoptics.com/knowledge-center/application-notes/imaging/understanding-focal-length-and-field-of-view/
