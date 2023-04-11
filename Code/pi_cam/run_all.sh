@@ -3,6 +3,11 @@
 
 cd /home/breathecam/breathecam/Code/pi_cam
 
+# Don't do anything if run_inhibit exists
+if [ -f config_files/run_inhibit ]; then
+    echo "config_files/run_inhibit exists, not running anything"
+    exit 0
+fi
 
 sudo su -c "mkdir -p logs" breathecam
 
@@ -12,8 +17,6 @@ sudo ./pingServer_launcher.sh &
 #./remoteDesktop_launcher.sh &
 
 sudo su -c "./imageService_launcher.sh 2>&1 >>logs/imageService.out" breathecam &
-
-#./udpPinger_launcher.sh &
 
 sudo su -c "./uploadToServer_launcher.sh 2>&1 >>logs/uploadToServer.out" breathecam & 
 

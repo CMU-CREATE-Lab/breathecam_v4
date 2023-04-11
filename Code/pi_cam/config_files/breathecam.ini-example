@@ -1,4 +1,4 @@
-a[breathecam]
+[breathecam]
 # Leave blank to set camera_id from hostname
 camera_id =
 log_level = INFO

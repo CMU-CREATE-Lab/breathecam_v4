@@ -121,33 +121,6 @@ print("Enabling verbose text boot messages")
 shell_cmd("sudo sed --in-place s/quiet// /boot/cmdline.txt")
 shell_cmd("sudo sed --in-place s/splash// /boot/cmdline.txt")
 
-def zerotier_join_network(network):
-    try:
-        subprocess.check_output("sudo zerotier-cli listnetworks", shell=True)
-    except:
-        print("Installing zerotier")
-        shell_cmd("curl -s https://install.zerotier.com | sudo bash")
-
-    client_id = subprocess.check_output("sudo zerotier-cli info", shell=True, encoding="utf-8").split()[2]
-
-    while True:
-        shell_cmd(f"sudo zerotier-cli join {network}")
-        netinfo = subprocess.check_output(f"sudo zerotier-cli listnetworks | grep {network}", shell=True, encoding="utf-8")
-        print(netinfo)
-        if "ACCESS_DENIED" in netinfo:
-            hostname = socket.gethostname()
-            url = f"https://my.zerotier.com/network/{network}"
-            print(f"zerotier: PLEASE AUTHENTICATE CLIENT {client_id} (hostname {hostname}) for access to network {network} at {url}")
-        elif "REQUESTING_CONFIGURATION" in netinfo:
-            print("Waiting for response from zerotier server")
-        elif "OK" in netinfo:
-            print(f"zerotier: joined and authenticated to network {network}")
-            return
-        else:
-            print("Unknown reply from zerotier listnetworks")
-        time.sleep(5)
-
-zerotier_join_network("db64858fedb73ddd")
 
 print("Halt breathecam services (if running)")
 shell_cmd("./kill_all.sh")

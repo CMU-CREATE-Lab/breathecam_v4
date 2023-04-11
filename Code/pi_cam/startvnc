@@ -1,7 +1,0 @@
-# start headless VNC
-vncserver-virtual
-export DISPLAY=':1'
-
-# Start window manager
-# Seems not to be really the right thing, but mostly works
-startlxde-pi&

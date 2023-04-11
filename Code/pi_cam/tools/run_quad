@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+  echo "usage: run_quad host_base command*"
+  exit 1
+fi
+
+for suffix in a b c d
+do
+	host=$1$suffix
+	echo
+	echo $host':'
+	ssh breathecam@$host "${@:2}"
+done

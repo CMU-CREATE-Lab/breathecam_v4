@@ -15,7 +15,6 @@ from picamera2 import Picamera2, CompletedRequest
 from picamera2.request import _MappedBuffer
 import libcamera
 from os.path import exists
-import ArducamMux
 import piexif
 import json
 import ctypes
@@ -27,8 +26,6 @@ class ImageService:
         self.log = config.logger
         self.last_grab = 0
         bc = config.parser["breathecam"]
-        self.camera_mux = int(bc["camera_mux"])
-        self.mux_channels = [int(x) for x in bc["mux_channels"].split()]
         self.rotation = [int(x) for x in bc["rotation"].split()]
         # tuning_file path is relative to the directory of this script
         script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -109,7 +106,7 @@ class ImageService:
         sensor_time_fmt = datetime.datetime.fromtimestamp(sensor_time_epoch).strftime('%H:%M:%S.%f')[:-3]
         after = time.monotonic()
         self.log.info(f"Saving {upload_filename} (exp {metadata['ExposureTime']/1000}ms, sensortime {sensor_time_fmt} took {(after - before) * 1000:.0f}ms")
-        self.log.info(f"  metadata: {metadata}")
+        self.log.debug(f"  metadata: {metadata}")
 
         # We've copied everything we need from request, so release it for the pipeline to proceed
         request.release()
@@ -153,13 +150,13 @@ class ImageService:
             request: CompletedRequest = self.picam2.capture_request()
             #request.
             capture_duration = time.monotonic() - before
-            self.log.info(f"Captured frame in {capture_duration*1000:.1f}ms")
+            self.log.debug(f"Captured frame in {capture_duration*1000:.1f}ms")
             all_count += 1
             with _MappedBuffer(request, "raw") as b:
-                self.log.info(f"len={len(b)}, sentinel area={b[-36:-28].hex(' ')}")
+                self.log.debug(f"len={len(b)}, sentinel area={b[-36:-28].hex(' ')}")
                 save_good_bad = False
                 if b[-36:-28] == sentinel_val:
-                    self.log.info("CORRUPT IMAGE!  Skipping.")
+                    self.log.warning("CORRUPT IMAGE!  Skipping.")
                     if save_good_bad:
                         request.save("main", datetime.datetime.now().strftime("test/bad.%H%M%S.%f.jpg"))
                     request.release()
