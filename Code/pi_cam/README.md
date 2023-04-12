@@ -1,5 +1,4 @@
 # RPI SETUP
-  Set hostname to camera id
 
 ### Create raspbian image with Raspberry Pi Imager
 - Select 32-bit raspbian
@@ -32,15 +31,57 @@ dtoverlay=disable-bt
     ./install.py
 
 
-# Remotely disabling startup on boot
+### Clone Pi card to multiples
 
-If you're having a problem where the system fails soon after boot and is rapid-cycle rebooting, consider trying to get back control of it by remotely disabling startup.  Even if you have a 1-2 second window before reboot, you can try this multiple times until it works.
+It is handy to initialize multiple cards by cloning the card from an existing Pi host which has been set up as above.  This is less labor-intensive than repeating the initialization steps for each host.
 
-    ssh piquad3a.local "echo '' | sudo crontab -"
+You can do this using the rpi-clone script, https://github.com/billw2/rpi-clone.
+  rpi-clone sda
+will clone the config to the card mounted on sda (the first USB device attached).
+  rpi-clone sda -s hosta -L hosta -u
+sets the host name to "hosta", sets the volume label to "hosta", and skips some confirm prompts.
+
+I set up a 4-port USB hub attached to a Pi, and put four cards in four USB sd card readers.  These cards will appear as sda, sdb, etc., in the order that you plug them in.  Then you can do:
+  rpi-clone sdb -s hostb -L hosta -u
+etc., for the four cards.
+
+One advantage of rpi-clone is that it uses rsync to transfer files, so if the modification is small it will go much faster than a full bit-copy.  rpi-clone is not set up to run parallel instances (a fixed mount point, for one thing), but you can script multiple sequential runs.
+
+The goal is to have the install.py script set up an configuration which is actually necessary for the breathecam software to run, or for remote access.  This insures that we can easily create a functional system fron scratch. But there are various minor things like git environment options, emacs, etc., which give a desirable environment, and it isn't necessary to figure out what all these things are and how to script their configuration.
 
 
-### Setting up typescript compilation for webConsole.ts
-### [I think this is set up by install.py]
+### Per host configuration (ZeroTier)
+
+Currently the only per-host config setting the zerotier identity.  Run tools/zerotier_add.py on the host to be configured.  On the ZeroTier web site, enable display of unconfigured breathecam hosts.  When the new one appears, give it a suitable name and enable it.  zerotier_add.py will delay until you add the host, looping until it is successful.
+
+
+### Disabling startup on boot
+
+You can inhibit the boot-time startup by creating the file:
+    breathecam/Code/pi_cam/config_files/run_inhibit
+
+This is useful for starting up cloned systems that you may not want to run right away.
+This will stop the watchdog behavior from rebooting the system if the cameras are not running (or if the watchdog is berserk).  You can do this remotely by eg.
+    ssh host.local "touch breathecam/Code/pi_cam/config_files/run_inhibit"
+
+Even if you have a 1-2 second window before reboot, you can try this multiple times until it works.
+
+An alternate method is to remove the crontab entry:
+    ssh host.local "echo '' | sudo crontab -"
+
+
+### Misc commands/notes:
+
+Each Pi4b board has several LEDs:
+
+* Tiny red LED:  Should be on and solid to indicate good power.  If flashing, indicates insufficient power.
+* Tiny green LED:  flashes when accessing SD card
+* Large green LEDs on ethernet:  flashes when uploading images
+
+
+Setting up typescript compilation for webConsole.ts:
+
+[This done automatically by install.py]
 Install node and npm:
     sudo apt install nodejs npm
 
@@ -52,59 +93,9 @@ First time (remove this section later):
 
 
 
-### Misc connands/notes:
-- > sudo raspi-config
-  Settings:
-    Interfaces/enable VNC
-    System/boot to desktop, auto login off
-    Can set VNC display resolution to eg. 1280x1024
-    Set hostname? xxx.breathecam.local
-    Can set up wifi for debugging
-- git clone https://github.com/CMU-CREATE-Lab/breathecam_v4.git breathecam
-- changing hostname (if necessary)
-    > sudo hostnamectl set-hostname NEWHOSTNAME --static
-    > sudo emacs /etc/hosts
-- build
-    > cd breathecam/Code/pi_cam_grab
-    > make
-- launch breathecam on boot
-	> sudo crontab -e	(add following to the bottom)
-		@reboot /home/breathecam/breathecam/Code/pi_cam/run_all.sh
+### Remote access:
 
-Each Pi4b board has several LEDs:
-
-* Tiny red LED:  Should be on and solid to indicate good power.  If flashing, indicates insufficient power.
-* Tiny green LED:  flashes when accessing SD card
-* Large green LEDs on ethernet:  flashes when uploading images
-
-
-### Arducam multi-camera adapter B012001 (multiplexer):
-[We are not using this board anymore]
-This switches between four cameras at a pretty low level. Whichever
-camera is selected then appears as camera 0 for libcamera-still, etc.
-
-See:
-    https://www.arducam.com/docs/cameras-for-raspberry-pi/multi-camera-adapter-board/multi-camera-adapter-board-v2-1/
-But you don't need any of their code or suggested installs except to
-run their demos.
-
-In config.txt, for the "Arducam multi-camera adapter board V2.2"
-i2c_vc=on is needed, this enables an i2c port on the media
-controller. Regular i2c and the camera interfaces are also enabled,
-but that already seems to be the default.
-
-
-Per-host config and SD copying:
-
-Except for per-host config all of the setup can be gotten by copying
-the SD card: "Start/Accessories/SD card copier".  Currently the only
-per-host config resetting the zerotier identity.  But startung using
-install.py insures that we know how to regenerate the configuration.
-
-
-Remote access:
-
-We are currently using ZeroTier.
+We are currently using ZeroTier.  This is installed and configured by tools/zerotier_join.py. 
 ________________________________________________________________
 On any Linux machine, it can be installed via:
 
@@ -134,32 +125,22 @@ To reset the ZeroTier identity after a disk/CF clone, do:
 Likewise, if you want to keep an existing identity after a reinstall,
 you can copy the old identity.* to the new card.
 
-I added my ZeroTier IP to /etc/hosts as test.breathecam.local, etc.  On
-windows this is: 
-    c:\windows\system32\drivers\etc\hosts
-
-We may want to set this as the DNS hostname in raspi-config.  Or maybe
-not.  If we have a different local name, then we can access it by name
-on the local net (not using ZeroTier).
+On a host where ZeroTier is installed and configured for the breathecam net you should be able to access a host by hostname.local.
 
 
 VNC access:
 
-It is possible that the GUI may be competing with the camera image capture for
-kernel DMA memory.  I've seen failures to allocate DMA "cma" memory.
+[The settings described here are done automatically by install.py]
 
-I tried figuring out how to get VNC access working without starting the
-"lxsession" desktop by default, and using "vncserver -virtual", but haven't
-been able to get that to work.  Trying just vncserver-virtual after ssh in
-resulted in a usable display on :1, but there was no window manager or
-taskbar.  In principle you can just start those somehow, but I didn't get that
-to work.  See breathecam/Code/pi_cam/startvnc script.
+There are various ways that VNC could presumably work, but I tried a number of things that didn't.  
 
-INSTEAD: use raspi-config in a terminal or the graphical version from
-the start menu, and enable "VNC" in interfaces.  This is the normal
-thing, and will create a :0 display.  Do not set the system to boot to
-command prompt, since the VNC session will not start on :0, and you
-will get a black screen with "currently unable to show the desktop".
+What does work:
+
+Use raspi-config in a terminal or the graphical version from the start menu,
+and enable "VNC" in interfaces.  This will set up so you can VNC connect on
+the :0 display.  Do not set the system to boot to command prompt, since the
+VNC session will not start on :0, and you will get a black screen with
+"currently unable to show the desktop".
 
 I also set it to not auto-login.  With these settings (VNC enabled, boot to
 desktop, no auto login), if you start headless, then it will not start all of
