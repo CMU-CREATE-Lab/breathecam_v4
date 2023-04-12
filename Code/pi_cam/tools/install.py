@@ -2,7 +2,7 @@
 
 import getpass, os, socket, subprocess, sys, time
 
-script_dir = os.path.dirname(os.path.realpath(__file__ + "../"))
+script_dir = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../")
 username = getpass.getuser()
 
 def shell_cmd(cmd):
