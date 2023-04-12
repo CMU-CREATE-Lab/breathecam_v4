@@ -2,7 +2,7 @@
 
 import getpass, os, socket, subprocess, sys, time
 
-script_dir = os.path.dirname(os.path.realpath(__file__))
+script_dir = os.path.dirname(os.path.realpath(__file__ + "../"))
 username = getpass.getuser()
 
 def shell_cmd(cmd):
@@ -59,7 +59,7 @@ def update_crontab(name, line, username=None):
 def parse_kernel_version(version):
     return [int(n) for n in version.split(".")]
 
-config_file = "config_files/breathecam.ini"
+config_file = script_dir + "/config_files/breathecam.ini"
 if not os.path.exists(config_file):
     msg = f"You must create {config_file} before running install.py.\nYou may copy and modify from breathecam.ini-example."
     print(msg)
@@ -123,11 +123,11 @@ shell_cmd("sudo sed --in-place s/splash// /boot/cmdline.txt")
 
 
 print("Halt breathecam services (if running)")
-shell_cmd("./kill_all.sh")
+shell_cmd(f"{script_dir}/tools/kill_all.sh") 
 print("Testing image capture")
 shell_cmd(f"{python} imageService.py --test-only")
 print("Start breathecam services")
-subprocess.run("./run_all.sh", shell=True)
+subprocess.run(f"{script_dir}/run_all.sh", shell=True)
 time.sleep(5)
 update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
 print("install.py DONE")
