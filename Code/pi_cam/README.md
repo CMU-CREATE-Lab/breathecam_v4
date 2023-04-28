@@ -38,16 +38,16 @@ It is handy to initialize multiple cards by cloning the card from an existing Pi
 You can do this using the rpi-clone script, https://github.com/billw2/rpi-clone.
   rpi-clone sda
 will clone the config to the card mounted on sda (the first USB device attached).
-  rpi-clone sda -s hosta -L hosta -u
+  rpi-clone sda -s hosta -L hosta -U
 sets the host name to "hosta", sets the volume label to "hosta", and skips some confirm prompts.
 
 I set up a 4-port USB hub attached to a Pi, and put four cards in four USB sd card readers.  These cards will appear as sda, sdb, etc., in the order that you plug them in.  Then you can do:
-  rpi-clone sdb -s hostb -L hosta -u
-etc., for the four cards.
+  rpi-clone sdb -s hostb -L hosta -U
+etc., for the four cards.  See tools/clone.sh
 
 One advantage of rpi-clone is that it uses rsync to transfer files, so if the modification is small it will go much faster than a full bit-copy.  rpi-clone is not set up to run parallel instances (a fixed mount point, for one thing), but you can script multiple sequential runs.
 
-The goal is to have the install.py script set up an configuration which is actually necessary for the breathecam software to run, or for remote access.  This insures that we can easily create a functional system fron scratch. But there are various minor things like git environment options, emacs, etc., which give a desirable environment, and it isn't necessary to figure out what all these things are and how to script their configuration.
+The goal is to have the install.py script set up an configuration which is actually necessary for the breathecam software to run, or for remote access.  This insures that we can easily create a functional system from scratch. But there are various minor things like git environment options, emacs, etc., which give a desirable environment, and it isn't necessary to figure out what all these things are and how to script their configuration.
 
 
 ### Per host configuration (ZeroTier)
