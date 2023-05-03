@@ -12,5 +12,3 @@ def shell_cmd(cmd):
 shell_cmd("git pull --rebase")
 subprocess.run("./install.py")
 print("update.py DONE")
-
-
