@@ -159,6 +159,8 @@ out for installation.  This works best using a small ROI (region of interest)
 with the libcamera-still preview mode, since this gives a high magnification
 and update rate.
     libcamera-still -t 0 --roi 0.5,0.5,0.1,0.1
+or
+    libcamera-still -t 0 --roi 0.5,0.5,0.1,0.1 --qt-preview
 
 This gives) a 10x zoom (0.1) at the middle of the frame (0.5).  You
 can move the ROI if needed.  Adding --qt-preview gives a smaller
