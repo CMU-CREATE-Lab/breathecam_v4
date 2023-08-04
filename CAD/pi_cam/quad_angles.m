@@ -8,7 +8,8 @@ sensor_size = [6.287, 4.712];
 % Image size in pixels
 pixel_size = [4056, 3040];
 
-portrait = false
+%portrait = false
+portrait = true
 
 if (portrait)
   sensor_size = fliplr(sensor_size);
@@ -16,12 +17,12 @@ if (portrait)
 end
 
 % Focal length in mm.
-focal_length = 16
-%focal_length = 25
+%focal_length = 16
+focal_length = 25
 
 % Camera arrangement, number of cameras in the X and Y directions
-layout = [2 2]
-%layout = [4 1]
+%layout = [2 2]
+layout = [4 1]
 
 % Angular field of view, see:
 % https://www.edmundoptics.com/knowledge-center/application-notes/imaging/understanding-focal-length-and-field-of-view/
