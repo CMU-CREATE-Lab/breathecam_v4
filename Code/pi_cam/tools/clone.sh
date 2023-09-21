@@ -1,3 +1,4 @@
+#!/bin/bash
 # Clone our image onto SD cards on sda, sdb, etc.  Argument $1 is the
 # host name prefix.  Cards are assigned drive numbers in the order
 # they are plugged in, so plug them in in order a, b, c, d.

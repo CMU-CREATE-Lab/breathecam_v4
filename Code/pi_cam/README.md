@@ -21,14 +21,14 @@
     nano config_files/breathecam.ini
 
 ### copy to /boot/config.txt
-### may not be necessary, depending
 dtoverlay=imx477
 dtoverlay=disable-wifi
 dtoverlay=disable-bt
 
 ### reboot. This seems to take a long time, maybe several reboots
 ### before comes up on ssh? 
-    ./install.py
+    cd breathecam/Code/pi_cam
+    ./tools/install.py
 
 
 ### Clone Pi card to multiples
@@ -36,6 +36,12 @@ dtoverlay=disable-bt
 It is handy to initialize multiple cards by cloning the card from an existing Pi host which has been set up as above.  This is less labor-intensive than repeating the initialization steps for each host.
 
 You can do this using the rpi-clone script, https://github.com/billw2/rpi-clone.
+```
+	$ git clone https://github.com/billw2/rpi-clone.git 
+	$ cd rpi-clone
+	$ sudo cp rpi-clone rpi-clone-setup /usr/local/sbin
+```
+
   rpi-clone sda
 will clone the config to the card mounted on sda (the first USB device attached).
   rpi-clone sda -s hosta -L hosta -U
@@ -43,7 +49,9 @@ sets the host name to "hosta", sets the volume label to "hosta", and skips some 
 
 I set up a 4-port USB hub attached to a Pi, and put four cards in four USB sd card readers.  These cards will appear as sda, sdb, etc., in the order that you plug them in.  Then you can do:
   rpi-clone sdb -s hostb -L hosta -U
-etc., for the four cards.  See tools/clone.sh
+etc., for the four cards.  This is what tools/clone.sh does.
+  tools/clone.sh host1
+will initialize cards for hosts host1a, host1b, host1c, host1d
 
 One advantage of rpi-clone is that it uses rsync to transfer files, so if the modification is small it will go much faster than a full bit-copy.  rpi-clone is not set up to run parallel instances (a fixed mount point, for one thing), but you can script multiple sequential runs.
 
@@ -52,7 +60,10 @@ The goal is to have the install.py script set up an configuration which is actua
 
 ### Per host configuration (ZeroTier)
 
-Currently the only per-host config setting the zerotier identity.  Run tools/zerotier_add.py on the host to be configured.  On the ZeroTier web site, enable display of unconfigured breathecam hosts.  When the new one appears, give it a suitable name and enable it.  zerotier_add.py will delay until you add the host, looping until it is successful.
+Generate new SSH host keys: (??? is clone doing this already? do we need?)
+    sudo rm /etc/ssh/ssh_host*; sudo ssh-keygen -A
+
+Currently the only per-host config setting the zerotier identity.  Run tools/zerotier_add.py on the host to be configured.  On the ZeroTier web `site, enable display of unconfigured breathecam hosts.  When the new one appears, give it a suitable name and enable it.  zerotier_add.py will delay until you add the host, looping until it is successful.
 
 
 ### Disabling startup on boot
@@ -90,7 +101,6 @@ After git clone:
 
 First time (remove this section later):
     npm install typescript --save-dev
-
 
 
 ### Remote access:
@@ -136,33 +146,23 @@ There are various ways that VNC could presumably work, but I tried a number of t
 
 What does work:
 
-Use raspi-config in a terminal or the graphical version from the start menu,
-and enable "VNC" in interfaces.  This will set up so you can VNC connect on
-the :0 display.  Do not set the system to boot to command prompt, since the
-VNC session will not start on :0, and you will get a black screen with
-"currently unable to show the desktop".
+Use raspi-config in a terminal or the graphical version from the start menu, and enable "VNC" in interfaces.  This will set up so you can VNC connect on the :0 display.  Do not set the system to boot to command prompt, since the VNC session will not start on :0, and you will get a black screen with "currently unable to show the desktop".
 
 I also set it to not auto-login.  With these settings (VNC enabled, boot to
-desktop, no auto login), if you start headless, then it will not start all of
-the desktop stuff until you VNC connect and log in.  Not sure if it is
-actually running "virtual" or not.  Possibly resource usage by the VNC session
-could affect operation.
+desktop, no auto login), if you start headless, then it will not start all of the desktop stuff until you VNC connect and log in.  Not sure if it is
+actually running "virtual" or not.  Possibly resource usage by the VNC session could affect operation.
 
 
 Camera setup:
 
-In the field you can check that the camera is working, and the camera aiming,
-using the e-cam status page.
 
-The lenses should be pre-focused on a distant subject before taking the camera
-out for installation.  This works best using a small ROI (region of interest)
-with the libcamera-still preview mode, since this gives a high magnification
-and update rate.
-    libcamera-still -t 0 --roi 0.5,0.5,0.1,0.1
-or
+In the field you can check that the camera is working, and the camera aiming, using the e-cam status page.
+
+The lenses should be pre-focused on a distant subject before taking the camera out for installation.  I do this by connecting using VNC and then using the libcamera-still preview.  On VNC it is pretty much necessary to use the --qt-preview option to libcamera-still, which changes to a smaller window with different update method. The default preview sometimes kind of works on VNC, but bogs down badly.
+
+Focusing works best using a small ROI (region of interest) with the libcamera-still preview mode, since this gives a high magnification and update rate.
     libcamera-still -t 0 --roi 0.5,0.5,0.1,0.1 --qt-preview
 
 This gives) a 10x zoom (0.1) at the middle of the frame (0.5).  You
-can move the ROI if needed.  Adding --qt-preview gives a smaller
-window which will update faster over a VNC connection.  --qt-preview
-may also work when the default display doesn't.
+can move the ROI if needed.
+

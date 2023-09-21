@@ -7,8 +7,8 @@ fi
 
 for suffix in a b c d
 do
-	host=$1$suffix
+	host=$1$suffix.local
 	echo
 	echo $host':'
-	ssh breathecam@$host "${@:2}"
+	ssh -o StrictHostKeyChecking=no breathecam@$host "${@:2}"
 done
