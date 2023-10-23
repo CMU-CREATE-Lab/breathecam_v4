@@ -60,7 +60,7 @@ class ImageService:
                         piexif.ImageIFD.Software: "Picamera2",
                         piexif.ImageIFD.MakerNoteSafety: 1}
             total_gain = metadata["AnalogueGain"] * metadata["DigitalGain"]
-            metadata["jpeg_quality"] = jpeg_quality
+            metadata["JpegQuality"] = jpeg_quality
             
             exif_ifd = {piexif.ExifIFD.ExposureTime: (metadata["ExposureTime"], 1000000),
                         piexif.ExifIFD.ISOSpeedRatings: int(total_gain * 100),
