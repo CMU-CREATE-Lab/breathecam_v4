@@ -46,6 +46,9 @@ class ImageService:
             format_str = file_output.split('.')[-1].lower()
         else:
             raise RuntimeError("Cannot detemine format to save")
+        # compress_level=1 saves pngs much faster, and still gets most of the compression.
+        png_compress_level = self.picam2.options.get("compress_level", 1)
+        jpeg_quality = self.config.quality()
         if format_str in ('jpg', 'jpeg'):
             if img.mode == "RGBA":
                 # Nasty hack. Qt doesn't understand RGBX so we have to use RGBA. But saving a JPEG
@@ -57,14 +60,12 @@ class ImageService:
                         piexif.ImageIFD.Software: "Picamera2",
                         piexif.ImageIFD.MakerNoteSafety: 1}
             total_gain = metadata["AnalogueGain"] * metadata["DigitalGain"]
+            metadata["jpeg_quality"] = jpeg_quality
             
             exif_ifd = {piexif.ExifIFD.ExposureTime: (metadata["ExposureTime"], 1000000),
                         piexif.ExifIFD.ISOSpeedRatings: int(total_gain * 100),
                         piexif.ExifIFD.MakerNote: f"Picamera2 {json.dumps(metadata)}".encode("utf8")}
             exif = piexif.dump({"0th": zero_ifd, "Exif": exif_ifd})
-        # compress_level=1 saves pngs much faster, and still gets most of the compression.
-        png_compress_level = self.picam2.options.get("compress_level", 1)
-        jpeg_quality = self.picam2.options.get("quality", 90)
         img.save(file_output, compress_level=png_compress_level, quality=jpeg_quality, exif=exif)
         end_time = time.monotonic()
         self.log.info(f"Saved image to file {file_output}.")

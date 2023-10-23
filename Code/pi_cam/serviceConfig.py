@@ -78,6 +78,10 @@ class ServiceConfig:
         self._camera_id = self.parser["breathecam"]["camera_id"] or socket.gethostname()
         self._upload_url = self.parser["breathecam"]["upload_url"]
         self._interval = float(self.parser["breathecam"]["interval"])
+        if "quality" in self.parser["breathecam"]:
+            self._quality = int(self.parser["breathecam"]["quality"])
+        else:
+            self._quality = 90
 
     def base_dir(self):
         return self._base_dir
@@ -91,6 +95,9 @@ class ServiceConfig:
     def interval(self):
         return self._interval
 
+    def quality(self):
+        return self._quality
+
     def log_dir(self):
         return self._base_dir + "logs/"
 
@@ -98,7 +105,7 @@ class ServiceConfig:
         return self._base_dir + "images/"
         
     def config_dir(self):
-        return self._base_dir + "config_files/"
+        return self._base_dir + "config_files/"    
 
 
 if __name__ == '__main__':

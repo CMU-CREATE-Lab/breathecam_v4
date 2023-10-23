@@ -18,3 +18,7 @@ rotation = 180 0 0
 
 # Time between images (sec)
 interval = 3
+
+# JPEG compression quality.  Historically has been 90 but we've recently (10/23) seen 70 give us twice the compression with good quality
+# We also tested 57 which gave us 2.5x compression but may have seen some blocking on the less detailed parts of the image
+quality = 70
