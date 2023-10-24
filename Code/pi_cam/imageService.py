@@ -18,6 +18,7 @@ from os.path import exists
 import piexif
 import json
 import ctypes
+from PIL import Image
 
 class ImageService:
     def __init__(self, config: ServiceConfig, test_only=False):
@@ -71,7 +72,7 @@ class ImageService:
         self.log.info(f"Saved image to file {file_output}.")
         self.log.info(f"Time taken for encode: {(end_time-start_time)*1000} ms.")
 
-    def save_file_and_metadata(self, request: CompletedRequest, capture_timestamp: int):
+    def save_file_and_metadata(self, request: CompletedRequest, capture_timestamp: int, rotate_ccw_90: bool):
         image_dir = self.config.image_dir().rstrip("/")
         current_dir = f"{image_dir}/current"
         os.makedirs(current_dir, exist_ok=True)
@@ -79,7 +80,12 @@ class ImageService:
         metadata = request.get_metadata() # Copies data from request
 
         # Create PIL image from request
-        img = request.make_image("main") # Referenced data from request;  do not release request until after done with image
+        img: Image = request.make_image("main") # Referenced data from request;  do not release request until after done with image
+        # Rotate image clockwise 90 degrees using numpy
+
+        if rotate_ccw_90:
+            img = img.rotate(90, expand=True)
+
 
         tmp_filename = f"{current_dir}/{capture_timestamp:.0f}-{os.getpid()}-tmp.jpg"
 
@@ -115,7 +121,13 @@ class ImageService:
     def grabLoop(self):
         self.log.info(f"Instantiating Picamera2 with tuning file {self.tuning_file}")
         self.picam2 = Picamera2(tuning=self.tuning_file)
-        transform = libcamera.Transform(rotation=self.rotation[0])
+        rotate_ccw = self.rotation[0] % 360
+        assert rotate_ccw in (0, 90, 180, 270), "Rotation must be 0, 90, 180, or 270"
+
+        # Round down to nearest 180 for transform since transform can only do 0 or 180
+        transform_rotation = rotate_ccw // 180 * 180
+        transform = libcamera.Transform(rotation=transform_rotation)
+        rotate_ccw_90 = (rotate_ccw - transform_rotation) == 90
 
         # preview defaults to lower resolution, auto-exposure and auto-white-balance
         preview_config = self.picam2.create_preview_configuration()
@@ -170,7 +182,7 @@ class ImageService:
                     this_capture_time = math.floor(current_time / interval) * interval
                     if this_capture_time > last_capture_time:
                         last_capture_time = this_capture_time
-                        self.save_file_and_metadata(request, this_capture_time)
+                        self.save_file_and_metadata(request, this_capture_time, rotate_ccw_90=rotate_ccw_90)
                     else:
                         request.release()
 
