@@ -28,6 +28,9 @@ layout = [4 1]
 % https://www.edmundoptics.com/knowledge-center/application-notes/imaging/understanding-focal-length-and-field-of-view/
 fov = 2*atan(sensor_size ./ (2*focal_length)) * (180/pi)
 
+% Size of a pixel FOV in radians
+rad_pixel = (fov(1)/180*pi) / pixel_size(1)
+
 % Overlap in pixels between camera FOVs
 overlap_pix = 250
 overlap_mm = overlap_pix / pixel_size(1) * sensor_size(1);

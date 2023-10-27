@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ $# -lt 3 ]; then
+  echo "usage: put_quad host_base local_file remote_file"
+  exit 1
+fi
+
+for suffix in a b c d
+do
+	host=$1$suffix.local
+	echo
+	echo $host':'
+	scp -o StrictHostKeyChecking=no $2 breathecam@$host:$3 
+done

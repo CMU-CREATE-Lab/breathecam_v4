@@ -1,3 +1,48 @@
+[27 Oct 23]
+
+________________________________________________________________
+>> quad_angles
+portrait =
+  logical
+   1
+focal_length =
+    16
+layout =
+     4     1
+fov =
+       16.753       22.231
+rad_pixel =
+   9.6184e-05
+overlap_pix =
+   250
+fov_total =
+        62.85       22.231
+theta =
+      -23.048            0
+      -7.6828            0
+       7.6828            0
+       23.048            0
+________________________________________________________________
+
+Inspecting camera mount angles w/ sine plate:
+4x1 16mm portrait:
+    Bottom: 23.048 degrees, 1.958 = 0.108 + 0.150 + 0.700 + 1 
+    Top: 7.6828 degrees, 0.668 = 0.108 + 0.160 + 0.400
+
+If the mount is warped so that the front rocks on the surface, then
+you need to include the rocking in the worst case TIR.
+
+If we measure the deviation over 22mm, then 0.001"/25um is 1.14
+mrad. I'm seeing deviations of .007 TIR or less, so 8 mrad. 
+
+For 16mm lens, the pixel angle is 96 urad. 8 mrad corresponds to 83
+pixels which is an acceptable deviation so far as maintaining the
+image overlap with the 250 pixel nominal overlap (neglecting other
+contributors such as camera/lens off-axis).
+
+The effect of pointing error is of course worse with longer lenses.
+
+
 [13 Feb 23]
 
 Having problems with image overlap changing during the day, perhaps
