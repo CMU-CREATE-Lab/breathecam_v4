@@ -9,9 +9,12 @@ import configparser
 
 class ServiceConfig:
     '''Wraps common code for reading configuration and logger initialization.'''
+    logger: logging.Logger
+    parser: configparser.ConfigParser
+
     def __init__(self, base_dir, logname):
         # Root directory of breathecam working tree (and of the git repo)
-        self._base_dir = os.path.realpath(base_dir) + '/';
+        self._base_dir = os.path.realpath(base_dir) + '/'
 
         # These are cache variables for the parameters.  This is
         # probably not necessary, people can just use the parser
@@ -22,17 +25,12 @@ class ServiceConfig:
         # URL for the upload server
         self._upload_url = ""
         # Float frame interval
-        self._interval = ""
-
-        # ConfigParser for breathecam.ini
-        self.parser: configparser.ConfigParser = None
-        # Logger instance for this service
-        self.logger: logging.Logger = None
+        self._interval = 5
 
         self._wait_for_time()
         self._read_config()
         self._log_start(logname)
-        self.logger.info('Log started: ID=%s URL=%s', self._camera_id, self._upload_url);
+        self.logger.info('Log started: ID=%s URL=%s', self._camera_id, self._upload_url)
 
     def _wait_for_time (self):
         # Wait until the system clock is synchronized.  In the current scheme
@@ -77,11 +75,12 @@ class ServiceConfig:
         self.parser.read(self.config_dir() + "breathecam.ini")
         self._camera_id = self.parser["breathecam"]["camera_id"] or socket.gethostname()
         self._upload_url = self.parser["breathecam"]["upload_url"]
-        self._interval = float(self.parser["breathecam"]["interval"])
-        if "quality" in self.parser["breathecam"]:
-            self._quality = int(self.parser["breathecam"]["quality"])
-        else:
-            self._quality = 90
+        self._interval = int(self.parser["breathecam"]["interval"])
+        self._quality = int(self.parser["breathecam"].get("quality", "90"))
+        self._crop_top = int(self.parser["breathecam"].get("crop_top", "0"))
+        self._crop_bottom = int(self.parser["breathecam"].get("crop_bottom", "0"))
+        self._crop_left = int(self.parser["breathecam"].get("crop_left", "0"))
+        self._crop_right = int(self.parser["breathecam"].get("crop_right", "0"))
 
     def base_dir(self):
         return self._base_dir
@@ -97,6 +96,18 @@ class ServiceConfig:
 
     def quality(self):
         return self._quality
+    
+    def crop_top(self):
+        return self._crop_top
+    
+    def crop_bottom(self):
+        return self._crop_bottom
+    
+    def crop_left(self):
+        return self._crop_left
+    
+    def crop_right(self):
+        return self._crop_right
 
     def log_dir(self):
         return self._base_dir + "logs/"
@@ -109,4 +120,4 @@ class ServiceConfig:
 
 
 if __name__ == '__main__':
-    conf = ServiceConfig('./', 'test');
+    conf = ServiceConfig('./', 'test')
