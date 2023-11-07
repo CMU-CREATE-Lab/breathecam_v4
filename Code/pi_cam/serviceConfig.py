@@ -81,6 +81,9 @@ class ServiceConfig:
         self._crop_bottom = int(self.parser["breathecam"].get("crop_bottom", "0"))
         self._crop_left = int(self.parser["breathecam"].get("crop_left", "0"))
         self._crop_right = int(self.parser["breathecam"].get("crop_right", "0"))
+        self._capture_url = self.parser["breathecam"]["capture_url"]
+        self._auth_username = self.parser["breathecam"]["auth_username"]
+        self._auth_password = self.parser["breathecam"]["auth_password"]
 
     def base_dir(self):
         return self._base_dir
@@ -109,14 +112,23 @@ class ServiceConfig:
     def crop_right(self):
         return self._crop_right
 
+    def capture_url(self):
+        return self._capture_url
+
+    def auth_username(self):
+        return self._auth_username
+
+    def auth_password(self):
+        return self._auth_password
+
     def log_dir(self):
         return self._base_dir + "logs/"
 
     def image_dir(self) -> str:
         return self._base_dir + "images/"
-        
+
     def config_dir(self):
-        return self._base_dir + "config_files/"    
+        return self._base_dir + "config_files/"
 
 
 if __name__ == '__main__':
