@@ -4,6 +4,7 @@ import getpass, os, socket, subprocess, sys, time
 
 script_dir = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../")
 username = getpass.getuser()
+debian_release_version = int(subprocess.check_output("lsb_release -rs", shell=True, encoding="utf-8").strip().lower())
 
 def shell_cmd(cmd):
     print(cmd)
@@ -67,7 +68,11 @@ if not os.path.exists(config_file):
 
 print("Install apt package dependencies")
 shell_cmd("sudo apt update")
-shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2 npm")
+# libcam library name seems to have changed starting in Debian Bookworm (12)
+if debian_release_version > 11:
+    shell_cmd("sudo apt install -y libcamera0.1 python3-libcamera libimage-exiftool-perl python3-picamera2 npm")
+else:
+    shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2 npm")
 
 print("Check kernel version")
 kernel_version = subprocess.check_output("uname -r", shell=True, encoding="utf-8").strip()
@@ -89,11 +94,17 @@ else:
 
 python = "/usr/bin/python3"
 
-print("Ensuring flask version >=2.2")
-if os.path.exists("/usr/bin/flask"):
-    shell_cmd(f"sudo apt remove -y python3-flask")
-if not os.path.exists("/usr/local/bin/flask"):
-    shell_cmd(f"sudo {python} -m pip install 'Flask>=2.2'")
+# Note that starting in Debian Bookworm (12), a venv is needed, otherwise Debian refuses to let you install
+# packages into the system python. For now under Bookworm, we just make use of python packages found via apt.
+if debian_release_version > 11:
+    print("Installing python3-flask from apt")
+    shell_cmd(f"sudo apt install -y python3-flask")
+else:
+    print("Ensuring flask version >=2.2")
+    if os.path.exists("/usr/bin/flask"):
+        shell_cmd(f"sudo apt remove -y python3-flask")
+    if not os.path.exists("/usr/local/bin/flask"):
+        shell_cmd(f"sudo {python} -m pip install 'Flask>=2.2'")
 
 # We enable to GUI for VNC access, but it doesn't really start unless
 # we have a screen or somebody logs in on VNC.  So there is minimal
