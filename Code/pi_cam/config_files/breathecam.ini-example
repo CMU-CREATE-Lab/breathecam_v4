@@ -22,3 +22,8 @@ crop_top = 0
 crop_bottom = 0
 crop_left = 0
 crop_right = 0
+
+# When using a IP cam, modify the following information
+capture_url =
+auth_username =
+auth_password =
