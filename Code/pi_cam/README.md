@@ -155,14 +155,17 @@ actually running "virtual" or not.  Possibly resource usage by the VNC session c
 
 Camera setup:
 
-
-In the field you can check that the camera is working, and the camera aiming, using the e-cam status page.
+In the field you can check that the camera is working, and the camera aiming, using the e-cam status page.  You can also use the "webconsole", point your browser to to: 
+    http://<pihost>:8000
+This is easier with a laptop with zerotier where you can connect to eg. clairton3.local.  Webconsole has full resolution view with or without a zoom for focusing.  The update rate is pretty low, <1 FPS, but still faster than the usual upload rates of 3 sec or slower.
 
 The lenses should be pre-focused on a distant subject before taking the camera out for installation.  I do this by connecting using VNC and then using the libcamera-still preview.  On VNC it is pretty much necessary to use the --qt-preview option to libcamera-still, which changes to a smaller window with different update method. The default preview sometimes kind of works on VNC, but bogs down badly.
 
 Focusing works best using a small ROI (region of interest) with the libcamera-still preview mode, since this gives a high magnification and update rate.
     libcamera-still -t 0 --roi 0.5,0.5,0.1,0.1 --qt-preview
+This gives) a 10x zoom (0.1) at the middle of the frame (0.5).
 
-This gives) a 10x zoom (0.1) at the middle of the frame (0.5).  You
-can move the ROI if needed.
+or for full resolution:
+    libcamera-still -t 0 --qt-preview --viewfinder-mode 4056:3040:8 --roi 0.5,0.5,0.05,0.05
 
+You can move the ROI if needed.
