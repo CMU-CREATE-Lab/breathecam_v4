@@ -16,17 +16,6 @@ class ServiceConfig:
         # Root directory of breathecam working tree (and of the git repo)
         self._base_dir = os.path.realpath(base_dir) + '/'
 
-        # These are cache variables for the parameters.  This is
-        # probably not necessary, people can just use the parser
-        # themselves.
-
-        # String name identifying this camera to the upload served
-        self._camera_id = ""
-        # URL for the upload server
-        self._upload_url = ""
-        # Float frame interval
-        self._interval = 5
-
         self._wait_for_time()
         self._read_config()
         self._log_start(logname)
@@ -52,7 +41,7 @@ class ServiceConfig:
         # the same file.
         try:
             os.makedirs(self.log_dir(), exist_ok = True)
-            # old_logdir = self.log_dir() + 'old/' 
+            # old_logdir = self.log_dir() + 'old/'
             # os.makedirs(old_logdir, exist_ok = True)
             # listOfFilesToMove = glob.glob(self.log_dir() + logname + "_*.txt")
             # for fileToMove in listOfFilesToMove:
@@ -76,6 +65,7 @@ class ServiceConfig:
         self._camera_id = self.parser["breathecam"]["camera_id"] or socket.gethostname()
         self._upload_url = self.parser["breathecam"]["upload_url"]
         self._interval = int(self.parser["breathecam"]["interval"])
+        self._num_upload_threads = int(self.parser["breathecam"].get("num_upload_threads", "1"))
         self._quality = int(self.parser["breathecam"].get("quality", "90"))
         self._crop_top = int(self.parser["breathecam"].get("crop_top", "0"))
         self._crop_bottom = int(self.parser["breathecam"].get("crop_bottom", "0"))
@@ -97,18 +87,21 @@ class ServiceConfig:
     def interval(self):
         return self._interval
 
+    def num_upload_threads(self):
+        return self._num_upload_threads
+
     def quality(self):
         return self._quality
-    
+
     def crop_top(self):
         return self._crop_top
-    
+
     def crop_bottom(self):
         return self._crop_bottom
-    
+
     def crop_left(self):
         return self._crop_left
-    
+
     def crop_right(self):
         return self._crop_right
 

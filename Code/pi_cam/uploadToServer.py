@@ -91,8 +91,7 @@ def uploadForever():
             batch_to_upload = batches[min(batches.keys())]
 
             listOfFiles = sorted(batch_to_upload, key=filenameTimestamp)
-            maxUploadThreads = 3
-            listOfFiles = listOfFiles[:BULK_UPLOAD_SIZE * maxUploadThreads]
+            listOfFiles = listOfFiles[:BULK_UPLOAD_SIZE * config.num_upload_threads()]
             # Split into max_parallel_uploads batches
             filesPerThread = [listOfFiles[i:i+BULK_UPLOAD_SIZE] for i in range(0, len(listOfFiles), BULK_UPLOAD_SIZE)]
             
