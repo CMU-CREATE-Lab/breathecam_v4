@@ -80,13 +80,13 @@ def uploadForever():
                 continue
 
             # We must complete upload of a batch before starting the next batch
-            batch_size = 60 * 5 # Seconds per batch of images
+            batch_size = 60 * config.batch_size()  # Seconds per batch of images
             batches = defaultdict(list)
             for image in images:
                 epoch_timestamp = filenameTimestamp(image)
                 batchno = epoch_timestamp // batch_size
                 batches[batchno].append(image)
-            
+
             # We're uploading the first batch listed
             batch_to_upload = batches[min(batches.keys())]
 
@@ -94,7 +94,7 @@ def uploadForever():
             listOfFiles = listOfFiles[:BULK_UPLOAD_SIZE * config.num_upload_threads()]
             # Split into max_parallel_uploads batches
             filesPerThread = [listOfFiles[i:i+BULK_UPLOAD_SIZE] for i in range(0, len(listOfFiles), BULK_UPLOAD_SIZE)]
-            
+
             import concurrent.futures
 
             beforeUpload = time.monotonic()
@@ -104,7 +104,7 @@ def uploadForever():
                 for (i, threadFiles) in enumerate(filesPerThread):
                     future = executor.submit(uploadFiles, threadFiles, i)
                     futures.append(future)
-                
+
                 # Wait for all threads to complete
                 # Sum all the upload sizes
                 uploadSize = sum([future.result() for future in futures])

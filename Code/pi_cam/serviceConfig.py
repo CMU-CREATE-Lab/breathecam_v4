@@ -66,6 +66,7 @@ class ServiceConfig:
         self._upload_url = self.parser["breathecam"]["upload_url"]
         self._interval = int(self.parser["breathecam"]["interval"])
         self._num_upload_threads = int(self.parser["breathecam"].get("num_upload_threads", "1"))
+        self._batch_size = int(self.parser["breathecam"].get("batch_size", "5"))
         self._quality = int(self.parser["breathecam"].get("quality", "90"))
         self._crop_top = int(self.parser["breathecam"].get("crop_top", "0"))
         self._crop_bottom = int(self.parser["breathecam"].get("crop_bottom", "0"))
@@ -89,6 +90,9 @@ class ServiceConfig:
 
     def num_upload_threads(self):
         return self._num_upload_threads
+
+    def batch_size(self):
+        return self._batch_size
 
     def quality(self):
         return self._quality
