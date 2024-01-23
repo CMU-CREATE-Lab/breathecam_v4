@@ -9,8 +9,8 @@ chown breathecam logs/pingServer.out
 
 su -c "python3 pingServer.py 2>&1 >>logs/pingServer.out" breathecam
 
-echo `date` ": ping service exited (probable watchdog trigger), rebooting in 30 seconds, user" `whoami` >>logs/pingServer.out
-sleep 30
+echo `date` ": ping service exited (probable watchdog trigger), rebooting in 60 seconds, user" `whoami` >>logs/pingServer.out
+sleep 60
 
 # having really weird problems where just plain "reboot" wasn't doing the job.
 while :

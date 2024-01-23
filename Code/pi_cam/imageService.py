@@ -1,5 +1,6 @@
 import threading
 import typing
+from typing import Union
 import datetime
 import math
 import sys
@@ -82,7 +83,7 @@ class ImageService:
         self.log.info(f"Saved image to file {file_output}.")
         self.log.info(f"Time taken for encode: {(end_time-start_time)*1000} ms.")
 
-    def save_file_and_metadata(self, request: CompletedRequest | Response, capture_timestamp: int, rotate_ccw_90: bool):
+    def save_file_and_metadata(self, request: Union[CompletedRequest, Response], capture_timestamp: int, rotate_ccw_90: bool):
         image_dir = self.config.image_dir().rstrip("/")
         current_dir = f"{image_dir}/current"
         os.makedirs(current_dir, exist_ok=True)
