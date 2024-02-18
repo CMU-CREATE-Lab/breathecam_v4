@@ -36,3 +36,6 @@ def zerotier_join_network(network):
         time.sleep(5)
 
 zerotier_join_network("db64858fedb73ddd")
+
+# Generate new SSH host keys since existing one was cloned
+shell_cmd("sudo ssh-keygen -A")
