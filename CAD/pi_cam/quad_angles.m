@@ -17,7 +17,8 @@ if (portrait)
 end
 
 % Focal length in mm.
-focal_length = 16
+focal_length = 12.5
+%focal_length = 16
 %focal_length = 25
 
 % Camera arrangement, number of cameras in the X and Y directions
@@ -32,7 +33,8 @@ fov = 2*atan(sensor_size ./ (2*focal_length)) * (180/pi)
 rad_pixel = (fov(1)/180*pi) / pixel_size(1)
 
 % Overlap in pixels between camera FOVs
-overlap_pix = 250
+%overlap_pix = 250
+overlap_pix = 300
 overlap_mm = overlap_pix / pixel_size(1) * sensor_size(1);
 overlap_fov = 2*atan(overlap_mm ./ (2*focal_length)) * (180/pi);
 
@@ -51,3 +53,10 @@ end
 
 fov_total
 theta
+
+% Sine plate angles, discard negative values because there should be
+% symmetric positive ones.
+plate_angles = theta(theta(:,1) >= 0, 1);
+
+% Spacer stack needed to get angle with 5" sine plate
+plate_stacks = [plate_angles sin(plate_angles / 180 * pi)*5]
