@@ -17,9 +17,9 @@ if (portrait)
 end
 
 % Focal length in mm.
-focal_length = 12.5
+%focal_length = 12.5
 %focal_length = 16
-%focal_length = 25
+focal_length = 25
 
 % Camera arrangement, number of cameras in the X and Y directions
 %layout = [2 2]
