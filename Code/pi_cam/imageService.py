@@ -18,7 +18,8 @@ from PIL import Image
 import requests
 from requests import Response
 from requests.auth import HTTPDigestAuth
-
+from euclid import *
+from scrollpos import *
 
 class ImageService:
     def __init__(self, config: ServiceConfig, test_only=False, test_only_save_image=False):
@@ -144,6 +145,37 @@ class ImageService:
         self.log.info(f"Saving {upload_filename} {extra_logging_info} took {(after - before) * 1000:.0f}ms")
         self.log.debug(f"  metadata: {metadata}")
 
+    def fastVideoFocusIfRequested(self):
+        self.picam2.stop()
+        self.picam2.configure(self.fast_focus_config)
+ 
+        sensor_res = Vector2(*self.picam2.sensor_resolution)
+        zoom_window_size = Vector2(640, 480)
+        scrollpos = read_scrollpos() # 0-1 in x and y, representing center of zoom
+        desired_center_pixel = Vector2(scrollpos.x * sensor_res.x, scrollpos.y * sensor_res.y)
+        desired_upper_left = desired_center_pixel - zoom_window_size / 2
+        min_valid = Vector2(0,0)
+        max_valid = sensor_res - zoom_window_size
+        actual_upper_left = Vector2(
+            min(max(desired_upper_left.x, min_valid.x), max_valid.x),
+            min(max(desired_upper_left.y, min_valid.y), max_valid.y)
+        )
+        self.picam2.set_controls({"ScalerCrop": [actual_upper_left.x, actual_upper_left.y, zoom_window_size.x, zoom_window_size.y]})
+        self.picam2.start()
+
+        before = time.time()
+        print("yo3")
+        self.picam2.capture_file("frame1.jpg")
+        print("yo4")
+        self.picam2.capture_file("frame2.jpg")
+        self.picam2.capture_file("frame3.jpg")
+        self.picam2.capture_file("frame4.jpg")
+        self.picam2.capture_file("frame5.jpg")
+        print(f"Capture of 5 frames took {(time.time() - before)*1000:.0f}ms")
+        self.picam2.stop()
+        self.picam2.configure(self.still_config)
+        self.picam2.start()
+        self.picam2.capture_file("frame6.jpg")
 
     def grabLoop(self):
         if self.is_picam:
@@ -167,6 +199,9 @@ class ImageService:
             time.sleep(2)
             self.picam2.stop()
 
+            self.fast_focus_config = self.picam2.create_preview_configuration()
+            self.fast_focus_config["transform"] = transform
+
             self.log.info("Reconfiguring camera for still")
             # still defaults to full-resolution, auto-exposure and auto-white-balance
             still_config = self.picam2.create_still_configuration(raw={}, buffer_count=1)
@@ -182,6 +217,10 @@ class ImageService:
         interval = self.config.interval()
         last_capture_time = 0
         all_count = 0
+
+        self.fastVideoFocusIfRequested()
+        exit(0)
+
 
         sentinel_val = b"\xff\x00\x11\xaa\xde\xad\xbe\xef"
         while True:
