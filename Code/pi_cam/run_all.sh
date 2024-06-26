@@ -24,4 +24,4 @@ echo "Compiling webConsole typescript"
 sudo su -c "node_modules/.bin/tsc" breathecam
 
 echo "Running webConsole"
-sudo su -c "/usr/local/bin/flask --app webConsole run --host=0.0.0.0 --port=8000 >> logs/webConsole.log 2>&1" breathecam &
+sudo su -c "/usr/local/bin/flask --app webConsole run --host=0.0.0.0 --port=8000

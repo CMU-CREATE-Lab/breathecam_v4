@@ -18,8 +18,8 @@ from PIL import Image
 import requests
 from requests import Response
 from requests.auth import HTTPDigestAuth
-from euclid import *
-from scrollpos import *
+from euclid import Vector2
+from scrollpos import read_scrollpos
 
 class ImageService:
     def __init__(self, config: ServiceConfig, test_only=False, test_only_save_image=False):
@@ -145,38 +145,43 @@ class ImageService:
         self.log.info(f"Saving {upload_filename} {extra_logging_info} took {(after - before) * 1000:.0f}ms")
         self.log.debug(f"  metadata: {metadata}")
 
+    # Check if we are in FastFocus mode.  If so, we take over grabbing as long as we stay in this mode. 
+    # Grab is fast as possible, cropped around the specified scrollpos.
     def fastVideoFocusIfRequested(self):
-        self.picam2.stop()
-        self.picam2.configure(self.fast_focus_config)
- 
-        sensor_res = Vector2(*self.picam2.sensor_resolution)
-        zoom_window_size = Vector2(640, 480)
-        scrollpos = read_scrollpos() # 0-1 in x and y, representing center of zoom
-        desired_center_pixel = Vector2(scrollpos.x * sensor_res.x, scrollpos.y * sensor_res.y)
-        desired_upper_left = desired_center_pixel - zoom_window_size / 2
-        min_valid = Vector2(0,0)
-        max_valid = sensor_res - zoom_window_size
-        actual_upper_left = Vector2(
-            min(max(desired_upper_left.x, min_valid.x), max_valid.x),
-            min(max(desired_upper_left.y, min_valid.y), max_valid.y)
-        )
-        self.picam2.set_controls({"ScalerCrop": [actual_upper_left.x, actual_upper_left.y, zoom_window_size.x, zoom_window_size.y]})
-        self.picam2.start()
+        scrollpos, z_mode = read_scrollpos();
+        if z_mode == "FastFocus":
+            self.picam2.stop()
+            self.picam2.configure(self.fast_focus_config) # type: ignore
+            self.picam2.start()
 
-        before = time.time()
-        print("yo3")
-        self.picam2.capture_file("frame1.jpg")
-        print("yo4")
-        self.picam2.capture_file("frame2.jpg")
-        self.picam2.capture_file("frame3.jpg")
-        self.picam2.capture_file("frame4.jpg")
-        self.picam2.capture_file("frame5.jpg")
-        print(f"Capture of 5 frames took {(time.time() - before)*1000:.0f}ms")
-        self.picam2.stop()
-        self.picam2.configure(self.still_config)
-        self.picam2.start()
-        self.picam2.capture_file("frame6.jpg")
+            sensor_res = Vector2(*self.picam2.sensor_resolution)
+            #zoom_window_size = Vector2(640, 480)
+            zoom_window_size = Vector2(320, 240)
+            # Current image
+            current_dir = self.config.image_dir().rstrip("/") + "/current"
+            current_filename = f"{current_dir}/current.jpg"
+            current_tmp_filename = f"{current_dir}/current-tmp{os.getpid()}-{threading.get_ident()}.jpg"               
+            while z_mode == "FastFocus":
+                desired_center_pixel = Vector2(scrollpos.x * sensor_res.x, scrollpos.y * sensor_res.y)
+                desired_upper_left = desired_center_pixel - zoom_window_size / 2
+                min_valid = Vector2(0,0)
+                max_valid = sensor_res - zoom_window_size
+                actual_upper_left = Vector2(
+                    min(max(desired_upper_left.x, min_valid.x), max_valid.x),
+                    min(max(desired_upper_left.y, min_valid.y), max_valid.y)
+                )
+                sc = [actual_upper_left.x, actual_upper_left.y, zoom_window_size.x, zoom_window_size.y]
+                self.picam2.set_controls({"ScalerCrop": [int(x) for x in sc]})
 
+                self.picam2.capture_file(current_tmp_filename)
+                time.sleep(0.1)
+                os.rename(current_tmp_filename, current_filename)
+                scrollpos, z_mode = read_scrollpos() # 0-1 in x and y, representing center of zoom
+
+            self.picam2.stop()
+            self.picam2.configure(self.still_config) # type: ignore
+            self.picam2.start()
+    
     def grabLoop(self):
         if self.is_picam:
             self.log.info(f"Instantiating Picamera2 with tuning file {self.tuning_file}")
@@ -199,34 +204,39 @@ class ImageService:
             time.sleep(2)
             self.picam2.stop()
 
-            self.fast_focus_config = self.picam2.create_preview_configuration()
-            self.fast_focus_config["transform"] = transform
-
             self.log.info("Reconfiguring camera for still")
             # still defaults to full-resolution, auto-exposure and auto-white-balance
-            still_config = self.picam2.create_still_configuration(raw={}, buffer_count=1)
-            still_config["transform"] = transform
-            self.log.info(f"Initial config is {still_config}")
-            self.picam2.align_configuration(still_config)
-            self.log.info(f"Config after alignment is {still_config}")
-            self.picam2.configure(still_config) # type: ignore
+            self.still_config = self.picam2.create_still_configuration(raw={}, buffer_count=1)
+            self.still_config["transform"] = transform
+            self.log.info(f"Initial config is {self.still_config}")
+            self.picam2.align_configuration(self.still_config)
+            self.log.info(f"Config after alignment is {self.still_config}")
 
+            # fast focus config
+            #self.fast_focus_config = self.picam2.create_still_configuration(buffer_count=4)
+            self.fast_focus_config = self.picam2.create_preview_configuration(
+                raw=None, lores=None)
+            self.fast_focus_config['main']['size'] = self.still_config['main']['size']
+            self.fast_focus_config['transform'] = transform
+            #self.fast_focus_config['controls']['Sharpness'] = 1
+            # BTW noise reduction decreases jpeg size
+            #self.fast_focus_config['controls']['NoiseReductionMode'] = 0
+            
+            self.picam2.configure(self.still_config) # type: ignore
             self.picam2.start()
             logging.getLogger('picamera2').setLevel(logging.WARNING)
+
+
 
         interval = self.config.interval()
         last_capture_time = 0
         all_count = 0
-
-        self.fastVideoFocusIfRequested()
-        exit(0)
-
-
         sentinel_val = b"\xff\x00\x11\xaa\xde\xad\xbe\xef"
         while True:
             # Capture next frame
             before = time.monotonic()
             if self.is_picam:
+                self.fastVideoFocusIfRequested()
                 request: CompletedRequest = self.picam2.capture_request() # type: ignore
                 capture_duration = time.monotonic() - before
                 self.log.debug(f"Captured frame in {capture_duration*1000:.1f}ms")
@@ -262,7 +272,7 @@ class ImageService:
                     all_count += 1
                     if response.status_code == 200:
                         last_capture_time = this_capture_time
-                        self.save_file_and_metadata(response, this_capture_time, rotate_ccw_90=0)
+                        self.save_file_and_metadata(response, this_capture_time, rotate_ccw_90=False)
                     else:
                         self.log.debug(f"Error querying camera. Got a '{response.status_code}' response code.")
 
