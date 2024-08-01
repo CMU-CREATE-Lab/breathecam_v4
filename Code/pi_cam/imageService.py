@@ -145,8 +145,70 @@ class ImageService:
         self.log.info(f"Saving {upload_filename} {extra_logging_info} took {(after - before) * 1000:.0f}ms")
         self.log.debug(f"  metadata: {metadata}")
 
+    # Create a PIL image from the center and corners of the input image img_in. These images are 
+    # composited into one image with the sub-images seperated by borders.
+    def extractCornersImage(self, img_in):
+        # Height, width of the sub-images extracted and composited.
+        zoom_window_size = Vector2(320, 240)
+        # Width of gray border between the sub images.
+        border = 5
+        border_color = (128, 128, 128)  # Gray color
+
+        img_width, img_height = img_in.size
+        zw_width, zw_height = zoom_window_size.x, zoom_window_size.y
+
+        # Coordinates for the corners and center
+        corners = [
+            (0, 0),  # top-left
+            (img_width - zw_width, 0),  # top-right
+            (0, img_height - zw_height),  # bottom-left
+            (img_width - zw_width, img_height - zw_height),  # bottom-right
+        ]
+        center = ((img_width - zw_width) // 2, (img_height - zw_height) // 2)
+
+        # Extract images
+        extracted_images = [img_in.crop((x, y, x + zw_width, y + zw_height)) for x, y in corners]
+        extracted_images.append(img_in.crop((center[0], center[1], center[0] + zw_width, center[1] + zw_height)))
+
+        # Create the composite image
+        composite_width = 3 * zw_width + 4 * border
+        composite_height = 3 * zw_height + 4 * border
+        composite_image = Image.new('RGB', (composite_width, composite_height), color=border_color)
+
+        # Place the extracted images in the composite image
+        positions = [
+            (border, border),  # top-left
+            (3 * border + 2 * zw_width, border),  # top-right
+            (border, 3 * border + 2 * zw_height),  # bottom-left
+            (3 * border + 2 * zw_width, 3 * border + 2 * zw_height),  # bottom-right
+            (border + zw_width + border, border + zw_height + border)  # center
+        ]
+
+        for pos, img in zip(positions, extracted_images):
+            composite_image.paste(img, pos)
+
+        return composite_image
+    
+    # Return a cropped subimage at the position in scrollpos
+    def fastZoomImage (self, img_in, scrollpos):
+        sensor_res = Vector2(*img_in.size)
+        zoom_window_size = Vector2(320, 240)
+        desired_center_pixel = Vector2(scrollpos.x * sensor_res.x, scrollpos.y * sensor_res.y)
+        desired_upper_left = desired_center_pixel - zoom_window_size / 2
+        min_valid = Vector2(0,0)
+        max_valid = sensor_res - zoom_window_size
+        actual_upper_left = Vector2(
+            min(max(desired_upper_left.x, min_valid.x), max_valid.x),
+               min(max(desired_upper_left.y, min_valid.y), max_valid.y)
+        )
+        lower_right = actual_upper_left + zoom_window_size
+        sc = [actual_upper_left.x, actual_upper_left.y, lower_right.x, lower_right.y]
+        # Extract the rectangle
+        return img_in.crop([int(x) for x in sc])
+    
     # Check if we are in FastFocus mode.  If so, we take over grabbing as long as we stay in this mode. 
-    # Grab is fast as possible, cropped around the specified scrollpos.
+    # Grab is fast as possible, cropped for easier visualization and to reduce the time taken to
+    # compress and write the image.
     def fastVideoFocusIfRequested(self):
         scrollpos, z_mode = read_scrollpos();
         if z_mode == "FastFocus":
@@ -154,30 +216,28 @@ class ImageService:
             self.picam2.configure(self.fast_focus_config) # type: ignore
             self.picam2.start()
 
-            sensor_res = Vector2(*self.picam2.sensor_resolution)
-            #zoom_window_size = Vector2(640, 480)
-            zoom_window_size = Vector2(320, 240)
             # Current image
             current_dir = self.config.image_dir().rstrip("/") + "/current"
             current_filename = f"{current_dir}/current.jpg"
             current_tmp_filename = f"{current_dir}/current-tmp{os.getpid()}-{threading.get_ident()}.jpg"               
             while z_mode == "FastFocus":
-                desired_center_pixel = Vector2(scrollpos.x * sensor_res.x, scrollpos.y * sensor_res.y)
-                desired_upper_left = desired_center_pixel - zoom_window_size / 2
-                min_valid = Vector2(0,0)
-                max_valid = sensor_res - zoom_window_size
-                actual_upper_left = Vector2(
-                    min(max(desired_upper_left.x, min_valid.x), max_valid.x),
-                    min(max(desired_upper_left.y, min_valid.y), max_valid.y)
-                )
-                sc = [actual_upper_left.x, actual_upper_left.y, zoom_window_size.x, zoom_window_size.y]
-                self.picam2.set_controls({"ScalerCrop": [int(x) for x in sc]})
+                try:
+                    request = self.picam2.capture_request()
+                    # Create PIL image from request
+                    img = request.make_image("main")
 
-                self.picam2.capture_file(current_tmp_filename)
+                    cropped = self.extractCornersImage(img)
+                    # cropped = self.fastZoomImage(img, scrollpos)
+                    cropped.save(current_tmp_filename)
+                finally:
+                    request.release()
+
+                # Sleep sets a max frame rate to keep from swamping the client in worst case
                 time.sleep(0.1)
                 os.rename(current_tmp_filename, current_filename)
                 scrollpos, z_mode = read_scrollpos() # 0-1 in x and y, representing center of zoom
 
+            # Done with fast focus, go back to still_config
             self.picam2.stop()
             self.picam2.configure(self.still_config) # type: ignore
             self.picam2.start()
@@ -213,15 +273,14 @@ class ImageService:
             self.log.info(f"Config after alignment is {self.still_config}")
 
             # fast focus config
-            #self.fast_focus_config = self.picam2.create_still_configuration(buffer_count=4)
-            self.fast_focus_config = self.picam2.create_preview_configuration(
-                raw=None, lores=None)
-            self.fast_focus_config['main']['size'] = self.still_config['main']['size']
+            self.fast_focus_config = self.picam2.create_still_configuration(raw={}, buffer_count=4)
             self.fast_focus_config['transform'] = transform
-            #self.fast_focus_config['controls']['Sharpness'] = 1
+            self.fast_focus_config['controls']['Sharpness'] = 0
             # BTW noise reduction decreases jpeg size
-            #self.fast_focus_config['controls']['NoiseReductionMode'] = 0
+            self.fast_focus_config['controls']['NoiseReductionMode'] = 0
+            self.picam2.align_configuration(self.still_config)
             
+            # Select the still config
             self.picam2.configure(self.still_config) # type: ignore
             self.picam2.start()
             logging.getLogger('picamera2').setLevel(logging.WARNING)
