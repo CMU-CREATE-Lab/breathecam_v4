@@ -11,6 +11,10 @@ pixel_size = [4056, 3040];
 %portrait = false
 portrait = true
 
+% Distance between mount holes on the short side for Arducam mini HQ
+% cam. This is used to show sensitivity of mount fabrication tolerances.
+mount_baseline = 12.5e-3;
+
 if (portrait)
   sensor_size = fliplr(sensor_size);
   pixel_size = fliplr(pixel_size);
@@ -18,8 +22,8 @@ end
 
 % Focal length in mm.
 %focal_length = 12.5
-%focal_length = 16
-focal_length = 25
+focal_length = 16
+%focal_length = 25
 
 % Camera arrangement, number of cameras in the X and Y directions
 %layout = [2 2]
@@ -60,3 +64,11 @@ plate_angles = theta(theta(:,1) >= 0, 1);
 
 % Spacer stack needed to get angle with 5" sine plate
 plate_stacks = [plate_angles sin(plate_angles / 180 * pi)*5]
+
+
+% Sensitivity to mounting error.  What dimensional error (normal to surface)
+% at the camera mounting would correspond to a pixel error of 1/4 the nominal
+% overlap?  Worst case this would give only 1/2 overlap, since the adjacent
+% cam could be off in the opposite direction.
+err_rad = overlap_pix / 4 * rad_pixel; % Error in radians
+max_mount_error_m = err_rad * mount_baseline % small angle approximation
