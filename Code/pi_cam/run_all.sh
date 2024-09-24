@@ -25,4 +25,6 @@ echo "Compiling webConsole typescript"
 sudo su -c "node_modules/.bin/tsc" breathecam
 
 echo "Running webConsole"
-sudo su -c "gunicorn -w 2 -b 0.0.0.0:8000 webConsole:app >> logs/webConsole.log 2>&1 &" breathecam
+# We need a long worker timeout because the worker loops during the
+# entire image streaming. This is 15 minutes.
+sudo su -c "gunicorn -w 2 -b 0.0.0.0:8000 webConsole:app --timeout 900 >> logs/webConsole.log 2>&1 &" breathecam
