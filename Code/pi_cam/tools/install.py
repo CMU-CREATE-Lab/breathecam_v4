@@ -74,6 +74,8 @@ if debian_release_version > 11:
 else:
     shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2 npm")
 
+shell_cmd("sudo apt install -y gunicorn ntp")
+    
 print("Check kernel version")
 kernel_version = subprocess.check_output("uname -r", shell=True, encoding="utf-8").strip()
 kernel_version = kernel_version.split("-")[0]
@@ -94,8 +96,10 @@ else:
 
 python = "/usr/bin/python3"
 
-# Note that starting in Debian Bookworm (12), a venv is needed, otherwise Debian refuses to let you install
-# packages into the system python. For now under Bookworm, we just make use of python packages found via apt.
+# Note that starting in Debian Bookworm (12), a venv is needed,
+# otherwise Debian refuses to let you install packages into the system
+# python. For now we just make use of python packages
+# found via apt.
 if debian_release_version > 11:
     print("Installing python3-flask from apt")
     shell_cmd(f"sudo apt install -y python3-flask")

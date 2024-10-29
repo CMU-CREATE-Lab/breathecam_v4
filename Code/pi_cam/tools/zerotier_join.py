@@ -1,4 +1,8 @@
 #!/usr/bin/python3
+# This is network initialization required on each host, and which
+# needs to be repeated if a host is initialized from a cloned SD card,
+# since the device has to have a distinct identity.  This split off
+# from install.py because it should *not* be repeated.
 
 import getpass, os, socket, subprocess, sys, time
 
