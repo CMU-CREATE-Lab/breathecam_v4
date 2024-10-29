@@ -10,5 +10,5 @@ do
 	host=$1$suffix.local
 	echo
 	echo $host':'
-	ssh -o StrictHostKeyChecking=no breathecam@$host "${@:2}"
+	ssh -T -o StrictHostKeyChecking=no breathecam@$host "${@:2}"
 done

@@ -110,6 +110,9 @@ else:
     if not os.path.exists("/usr/local/bin/flask"):
         shell_cmd(f"sudo {python} -m pip install 'Flask>=2.2'")
 
+# gunicorn is used as the flask server   
+shell_cmd(f"sudo apt-get install -y gunicorn")
+
 # We enable to GUI for VNC access, but it doesn't really start unless
 # we have a screen or somebody logs in on VNC.  So there is minimal
 # overhead when not used.

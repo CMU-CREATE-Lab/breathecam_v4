@@ -33,9 +33,9 @@ dtoverlay=disable-bt
 
 ### Clone Pi card to multiples
 
-It is handy to initialize multiple cards by cloning the card from an existing Pi host which has been set up as above.  This is less labor-intensive than repeating the initialization steps for each host.
+It is handy to initialize multiple cards by cloning the card from an existing Pi host which has been set up as above.  This is less labor-intensive than repeating the initialization steps for each host.  See tools/clone.sh, details below.
 
-You can do this using the rpi-clone script, https://github.com/billw2/rpi-clone.
+clone.sh uses the rpi-clone script, https://github.com/billw2/rpi-clone.
 ```
 	$ git clone https://github.com/billw2/rpi-clone.git 
 	$ cd rpi-clone
@@ -47,23 +47,21 @@ will clone the config to the card mounted on sda (the first USB device attached)
   rpi-clone sda -s hosta -L hosta -U
 sets the host name to "hosta", sets the volume label to "hosta", and skips some confirm prompts.
 
-I set up a 4-port USB hub attached to a Pi, and put four cards in four USB sd card readers.  These cards will appear as sda, sdb, etc., in the order that you plug them in.  Then you can do:
-  rpi-clone sdb -s hostb -L hosta -U
-etc., for the four cards.  This is what tools/clone.sh does.
+I set up a 4-port USB hub attached to a Pi (bcinit.local), and put four cards in four USB sd card readers.  These cards will appear as sda, sdb, etc., in the order that you plug them in.  Then you can do:
   tools/clone.sh host1
-will initialize cards for hosts host1a, host1b, host1c, host1d
+to initialize cards for hosts host1a, host1b, host1c, host1d
 
-One advantage of rpi-clone is that it uses rsync to transfer files, so if the modification is small it will go much faster than a full bit-copy.  rpi-clone is not set up to run parallel instances (a fixed mount point, for one thing), but you can script multiple sequential runs.
+One advantage of rpi-clone is that it uses rsync to transfer files, so if the modificationp is small it will go much faster than a full bit-copy.  rpi-clone is not set up to run parallel instances (a fixed mount point, for one thing), but you can script multiple sequential runs.
 
 The goal is to have the install.py script set up an configuration which is actually necessary for the breathecam software to run, or for remote access.  This insures that we can easily create a functional system from scratch. But there are various minor things like git environment options, emacs, etc., which give a desirable environment, and it isn't necessary to figure out what all these things are and how to script their configuration.
 
 
 ### Per host configuration (ZeroTier)
 
-Generate new SSH host keys: (??? is clone doing this already? do we need?)
+Generate new SSH host keys: (zerotier_join.py is doing ssh-keygen, not the rm, IDK)
     sudo rm /etc/ssh/ssh_host*; sudo ssh-keygen -A
 
-Currently the only per-host config setting the zerotier identity.  Run tools/zerotier_add.py on the host to be configured.  On the ZeroTier web `site, enable display of unconfigured breathecam hosts.  When the new one appears, give it a suitable name and enable it.  zerotier_add.py will delay until you add the host, looping until it is successful.
+Currently the only per-host config setting is the zerotier identity.  Run tools/zerotier_add.py on the host to be configured.  On the ZeroTier web site, enable display of unconfigured breathecam hosts.  When the new one appears, give it a suitable name and enable it.  zerotier_add.py will delay until you add the host, looping until it is successful.
 
 
 ### Disabling startup on boot

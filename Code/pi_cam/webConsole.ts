@@ -1,5 +1,23 @@
+let slowFocusImageContainer;
+let slowFocusImage;
+let zoomOutImage;
+let fastFocusImage;
+
+type ScrollPos = { mode: string, x: number, y: number };
+let scrollPos: ScrollPos = { mode: "ZoomOut", x: -1, y: -1 };
+
+document.addEventListener('DOMContentLoaded', () => {
+    slowFocusImageContainer = requireElementIdType("slowFocusImageContainer", HTMLDivElement);
+    slowFocusImage = requireElementIdType("slowFocusImage", HTMLImageElement);
+    zoomOutImage = requireElementIdType("zoomOutImage", HTMLImageElement);
+    fastFocusImage = requireElementIdType("fastFocusImage", HTMLImageElement);
+    initButtons();
+    initResize();
+    streamLoop();
+});
+
 function requireElementIdType<EltType extends HTMLElement>(id: string, constructor:{new():EltType}): EltType {
-    var elt = document.getElementById(id);
+    let elt = document.getElementById(id);
     if (!elt) {
         throw Error(`Required dom element id=${id} not found`);
     }
@@ -64,8 +82,8 @@ interface Mode {
 
 class ZoomOutMode implements Mode {
     async enter() {
-        viewState = new ViewState();
-        scrollPos = await (await fetch("/readScrollpos")).json();    
+        viewState = new ViewState("ZoomOut");
+        scrollPos.mode = "ZoomOut";
     }
     url = "/currentStream";
     async receiveImage(objectUrl: string) {
@@ -77,12 +95,22 @@ class ZoomOutMode implements Mode {
         zoomOutImage.style.display = "none";
     }
 };
-let zoomOutMode = new ZoomOutMode();
+const zoomOutMode = new ZoomOutMode();
 
+// While SlowFocusMode works, it is the only mode that tries to keep viewState 
+// updated, and yet viewState is not actually needed. The panning in SlowFocus mode
+// happens all on the client side, so there is no need to do writeScrollPos(), so
+// no need to have the viewState mechanisim to keep track of when to do writeScrollPos().
+// Probably viewState mechanism should just be ripped out.  Also the viewState updating
+// is buggy.
+//
+// What does need to do writeScrollPos() is FastFocusMode, and yet it is not clear how
+// to get this to work. I don't see how to use actual scrollbars, so once again it is unclear 
+// if viewState is relevant.
 class SlowFocusMode implements Mode {
     async enter() {
-        viewState = new ViewState();
-        scrollPos = await (await fetch("/readScrollpos")).json();    
+        viewState = new ViewState("SlowFocus");
+        scrollPos.mode = "SlowFocus";
     }    
     url = "/currentStream";
     async receiveImage(objectUrl: string) {
@@ -90,20 +118,42 @@ class SlowFocusMode implements Mode {
         await slowFocusImage.decode();
         slowFocusImageContainer.style.display = "block";
         slowFocusImage.style.display = "block";
-        updateViewState({imageWidth: slowFocusImage.width, imageHeight: slowFocusImage.height});
+        //onWindowResize();
+        updateViewState({
+            imageWidth: slowFocusImage.width, 
+            imageHeight: slowFocusImage.height, 
+            containerWidth: slowFocusImageContainer.clientWidth, 
+            containerHeight: slowFocusImageContainer.clientHeight});
     }
     async exit() {
         slowFocusImageContainer.style.display = "none";
         slowFocusImage.style.display = "none";
     }
 };
-let slowFocusMode = new SlowFocusMode()
+const slowFocusMode = new SlowFocusMode()
+
+class FastFocusMode implements Mode {
+    async enter() {
+        viewState = new ViewState("FastFocus");
+        scrollPos.mode = "FastFocus";
+    }
+    url = "/currentStream";
+    async receiveImage(objectUrl: string) {
+        fastFocusImage.src = objectUrl;
+        await fastFocusImage.decode();
+        fastFocusImage.style.display = "block";
+    }
+    async exit() {
+        zoomOutImage.style.display = "none";
+    }
+};
+const fastFocusMode = new FastFocusMode();
 
 let streamReader = null;
 
 function cancelStream() {
-    console.log("cancelStream()");
     if (streamReader) {
+        console.log("cancelStream()");
         try {
             streamReader.cancel();
         } catch {}
@@ -111,21 +161,16 @@ function cancelStream() {
     }
 }
 
-var modeButtons = new RadioButtonHighlight([
-    { id: "zoomOutButton", mode: zoomOutMode, initialSelection: true},
-    { id: "slowFocusButton", mode: slowFocusMode},
-    //{ id: "fastFocusButton", mode: FastFocusMode}
-],
+let modeButtons;
+function initButtons() {
+    modeButtons = new RadioButtonHighlight([
+        { id: "zoomOutButton", mode: zoomOutMode, initialSelection: true},
+        { id: "slowFocusButton", mode: slowFocusMode},
+        { id: "fastFocusButton", mode: fastFocusMode}
+    ],
     cancelStream
-);
-
-var slowFocusImageContainer = requireElementIdType("slowFocusImageContainer", HTMLDivElement);
-var slowFocusImage = requireElementIdType("slowFocusImage", HTMLImageElement);
-var zoomOutImage = requireElementIdType("zoomOutImage", HTMLImageElement);
-var fastFocusImage = requireElementIdType("fastFocusImage", HTMLImageElement);
-
-type ScrollPos = {x: number, y: number};
-var scrollPos: ScrollPos = {x: -1, y: -1};
+    );
+};
 
 type ViewStateUpdate = {
     imageWidth?: number;
@@ -135,11 +180,13 @@ type ViewStateUpdate = {
 };
 
 class ViewState {
+    mode: string;
     imageWidth: number;
     imageHeight: number;
     containerWidth: number;
     containerHeight: number;
-    constructor(imageWidth=NaN, imageHeight=NaN, containerWidth=NaN, containerHeight=NaN) {
+    constructor(mode, imageWidth = NaN, imageHeight = NaN, containerWidth = NaN, containerHeight = NaN) {
+        this.mode = mode;
         this.imageWidth = imageWidth;
         this.imageHeight = imageHeight;
         this.containerWidth = containerWidth;
@@ -149,7 +196,7 @@ class ViewState {
         return !(isNaN(this.imageWidth) || isNaN(this.imageHeight) || isNaN(this.containerWidth) || isNaN(this.containerHeight));
     }
     equals(rhs: ViewState) {
-        return this.imageWidth === rhs.imageWidth && this.imageHeight == rhs.imageHeight &&
+        return this.mode === rhs.mode && this.imageWidth === rhs.imageWidth && this.imageHeight == rhs.imageHeight &&
             this.containerWidth === rhs.containerWidth && this.containerHeight === rhs.containerHeight
     }
     scrollBarsFromScrollPos(scrollPos: ScrollPos) {
@@ -158,14 +205,16 @@ class ViewState {
             scrollTop: scrollPos.y * this.imageHeight - this.containerHeight / 2
         }
     }
-    scrollPosFromScrollBars(scroll: {scrollLeft: number, scrollTop: number}) {
+    scrollPosFromScrollBars(scroll: { scrollLeft: number, scrollTop: number }) {
         return {
+            mode: this.mode,
             x: (scroll.scrollLeft + this.containerWidth / 2) / this.imageWidth,
             y: (scroll.scrollTop + this.containerHeight / 2) / this.imageHeight
         };
     }
     withUpdate(update: ViewStateUpdate) {
         return new ViewState(
+            this.mode,
             update.imageWidth ?? this.imageWidth,
             update.imageHeight ?? this.imageHeight,
             update.containerWidth ?? this.containerWidth,
@@ -174,11 +223,11 @@ class ViewState {
     }
 }
 
-var viewState = new ViewState();
+let viewState = new ViewState("ZoomOut");
 
 // If image container changes size (from e.g. window resize), or if image itself changes size (also triggered by the first image loaded),
 // update the HTML scrollbars from current scrollPos.
-var firstFrameLoaded = false;
+let firstFrameLoaded = false;
 async function updateViewState(update: ViewStateUpdate) {
     let newState = viewState.withUpdate(update);
     if (!newState.equals(viewState)) {
@@ -199,14 +248,8 @@ async function onWindowResize() {
     updateViewState({containerWidth: slowFocusImageContainer.clientWidth, containerHeight: slowFocusImageContainer.clientHeight});
 }
 
-// Capture scroll events after first camera frame is loaded
-async function onImageContainerScroll() {
-    if (!firstFrameLoaded) return; // Ignore scroll events until first frame is loaded
-    scrollPos = viewState.scrollPosFromScrollBars({
-            scrollLeft: slowFocusImageContainer.scrollLeft,
-            scrollTop: slowFocusImageContainer.scrollTop
-        });
-
+// Push scrollPos out to the server, should be done whenever it changes, such as on mode change
+function writeScrollpos () {
     console.log(`writeScrollpos ${JSON.stringify(scrollPos)}`);
 
     fetch('/writeScrollpos', {
@@ -216,26 +259,33 @@ async function onImageContainerScroll() {
     });
 }
 
-let lastObjectUrl: string = "";
+// Capture scroll events after first camera frame is loaded
+async function onImageContainerScroll() {
+    if (!firstFrameLoaded) return; // Ignore scroll events until first frame is loaded
+    scrollPos = viewState.scrollPosFromScrollBars({
+            scrollLeft: slowFocusImageContainer.scrollLeft,
+            scrollTop: slowFocusImageContainer.scrollTop
+        });
+    writeScrollpos();
+}
 
+let imageQueue: string[] = [];
+let isImageProcessing: boolean = false;
 
 async function stream(mode: Mode) {
     console.log(`streamForever ${mode.constructor.name}`);
     await mode.enter();
-
+    writeScrollpos();
     try {
         while (mode === modeButtons.selected?.mode) {
             console.log(`fetching ${mode.url}`);
             let response = await fetch(mode.url);
-
             streamReader = response.body.getReader();
-
             let buf = new Uint8Array();
 
-            // Return ArrayBuf of length len, reading reader as needed
-            async function readLen(len: number): Promise<Uint8Array|null> {
+            async function readLen(len: number): Promise<Uint8Array | null> {
                 while (buf.length < len) {
-                    let {value, done} = await streamReader.read();
+                    let { value, done } = await streamReader.read();
                     if (value?.length) {
                         let newBuf = new Uint8Array(buf.length + value.length);
                         newBuf.set(buf, 0);
@@ -247,10 +297,9 @@ async function stream(mode: Mode) {
                 }
                 let ret = buf.slice(0, len);
                 buf = buf.slice(len);
-                //console.log("readLen(", len, ") returning with length", ret.length);
                 return ret;
-            }    
-        
+            }
+
             while (true) {
                 let lenArray = await readLen(4);
                 if (lenArray) {
@@ -259,17 +308,12 @@ async function stream(mode: Mode) {
                     let jpeg = await readLen(len);
                     if (jpeg) {
                         console.log(`Receiving jpeg len=${jpeg.length} took=${Math.round(performance.now() - before)} ms`);
-                        let objectUrl = URL.createObjectURL(new Blob([jpeg.buffer], {type: "image/jpeg"}));
-                        await mode.receiveImage(objectUrl);
-                        if (lastObjectUrl) {
-                            URL.revokeObjectURL(lastObjectUrl);
-                        }
-                        lastObjectUrl = objectUrl;
-                        // Successful frame;  get next one
+                        let objectUrl = URL.createObjectURL(new Blob([jpeg.buffer], { type: "image/jpeg" }));
+                        imageQueue.push(objectUrl);
+                        processImageQueue(mode);
                         continue;
                     }
                 }
-                // Unsuccessful frame;  exit loop and re-fetch /currentStream
                 break;
             }
 
@@ -281,13 +325,31 @@ async function stream(mode: Mode) {
     }
 }
 
-slowFocusImageContainer.addEventListener("scroll", onImageContainerScroll);
-window.addEventListener("resize", onWindowResize); // TODO: think about resize and whether it will goof up a hidden slowFocusMode
-onWindowResize();
+async function processImageQueue(mode: Mode) {
+    if (isImageProcessing || imageQueue.length === 0) return;
 
+    isImageProcessing = true;
+    let objectUrl = imageQueue.shift();
+
+    try {
+        await mode.receiveImage(objectUrl);
+    } catch (error) {
+        console.error(`Error processing image ${objectUrl}:`, error);
+    } finally {
+        URL.revokeObjectURL(objectUrl);
+        isImageProcessing = false;
+        processImageQueue(mode); // Process the next image in the queue
+    }
+}
+
+function initResize () {
+    slowFocusImageContainer.addEventListener("scroll", onImageContainerScroll);
+    window.addEventListener("resize", onWindowResize); 
+    onWindowResize();
+}
 
 async function streamLoop() {
-    while (1) { 
+    while (true) {
         let mode = modeButtons.selected?.mode;
         if (mode) {
             await stream(mode);
@@ -297,7 +359,4 @@ async function streamLoop() {
     }
 }
 
-
-console.log("webConsole.ts loaded v2");
-
-streamLoop();
+console.log("webConsole.ts loaded v4");

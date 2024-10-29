@@ -15,7 +15,6 @@ sleep 1
 
 echo "Killing services:"
 sudo pkill -f pingServer.py
-#pkill -f ??? remote desktop
 sudo pkill -f imageService.py
 sudo pkill -f udpPinger.py
 sudo pkill -f uploadToServer.py
