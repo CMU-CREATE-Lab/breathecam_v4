@@ -74,7 +74,15 @@ if debian_release_version > 11:
 else:
     shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2 npm")
 
-shell_cmd("sudo apt install -y gunicorn ntp")
+# user for local time server from realtime clock in case net is down
+shell_cmd("sudo apt install -y ntp")
+
+print("Installing python3-flask from apt")
+shell_cmd(f"sudo apt install -y python3-flask")
+
+# gunicorn is used as the flask server   
+shell_cmd(f"sudo apt-get install -y gunicorn")
+
     
 print("Check kernel version")
 kernel_version = subprocess.check_output("uname -r", shell=True, encoding="utf-8").strip()
@@ -86,6 +94,44 @@ if parse_kernel_version(kernel_version) < parse_kernel_version(minimum_kernel_ve
     print(msg)
     raise(Exception(msg))
 
+
+def add_line_to_config(line, config_file_path="/boot/config.txt"):
+    """
+    Adds the specified line to the config file if it's not already present, using sudo to modify the file.
+
+    :param line: The line to add to the config file.
+    :param config_file_path: Path to the config file (default is '/boot/config.txt').
+    """
+    # Read the existing lines in the config file
+    with open(config_file_path, "r") as file:
+        lines = file.readlines()
+
+    # Check if the line is already present
+    if not any(line.strip() in l for l in lines):
+        # If not present, append it using sudo and tee
+        try:
+            subprocess.run(
+                ["echo", f"\n{line}\n", "|", "sudo", "tee", "-a", config_file_path],
+                check=True,
+                text=True,
+                shell=True
+            )
+            print(f'Added "{line}" to {config_file_path}')
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+    else:
+        print(f'"{line}" is already present in {config_file_path}')
+
+
+# Add options to config.txt
+# Enable realtime clock (may not actually be present)
+add_line_to_config("dtoverlay=i2c-rtc,ds3231")
+# Disable wireless stuff because it can interfere with the cameras
+# when inside the enclosure (and doesn't work anyway in that case).
+add_line_to_config("dtoverlay=disable-wifi")
+add_line_to_config("dtoverlay=disable-bt")
+
+
 if os.path.exists(os.path.expanduser("~/pi-monitor")):
     print("Updating pi-monitor")
     shell_cmd("~/pi-monitor/update.py")
@@ -95,23 +141,6 @@ else:
     shell_cmd("~/pi-monitor/install.py")
 
 python = "/usr/bin/python3"
-
-# Note that starting in Debian Bookworm (12), a venv is needed,
-# otherwise Debian refuses to let you install packages into the system
-# python. For now we just make use of python packages
-# found via apt.
-if debian_release_version > 11:
-    print("Installing python3-flask from apt")
-    shell_cmd(f"sudo apt install -y python3-flask")
-else:
-    print("Ensuring flask version >=2.2")
-    if os.path.exists("/usr/bin/flask"):
-        shell_cmd(f"sudo apt remove -y python3-flask")
-    if not os.path.exists("/usr/local/bin/flask"):
-        shell_cmd(f"sudo {python} -m pip install 'Flask>=2.2'")
-
-# gunicorn is used as the flask server   
-shell_cmd(f"sudo apt-get install -y gunicorn")
 
 # We enable to GUI for VNC access, but it doesn't really start unless
 # we have a screen or somebody logs in on VNC.  So there is minimal
