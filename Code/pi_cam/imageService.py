@@ -18,7 +18,7 @@ from PIL import Image
 import requests
 from requests import Response
 from requests.auth import HTTPDigestAuth
-from euclid import Vector2
+from euclid3 import Vector2
 from scrollpos import read_scrollpos, write_scrollpos
 
 class ImageService:

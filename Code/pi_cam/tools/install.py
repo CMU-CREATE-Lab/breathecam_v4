@@ -1,10 +1,18 @@
 #!/usr/bin/python3
 
-import getpass, os, socket, subprocess, sys, time
+from pathlib import Path
+import getpass, subprocess, sys
 
-script_dir = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../")
+script_dir = Path(__file__).resolve().parent
 username = getpass.getuser()
 debian_release_version = int(subprocess.check_output("lsb_release -rs", shell=True, encoding="utf-8").strip().lower())
+
+venv_dir = os.path.expanduser("~/.venv")
+if not os.path.exists(venv_dir):
+    print(f"Creating Python virtual environment at {venv_dir}")
+    shell_cmd(f"python3 -m venv {venv_dir}")
+else:
+    print(f"Virtual environment already exists at {venv_dir}")
 
 def shell_cmd(cmd):
     print(cmd)
@@ -12,16 +20,16 @@ def shell_cmd(cmd):
 
 def install_ssh_key(key):
     keyname = key.split()[-1]
-    sshdir = os.path.expanduser("~/.ssh")
-    if not os.path.exists(sshdir):
-        os.mkdir(sshdir, mode=0o700)
-    keyfile = os.path.expanduser("~/.ssh/authorized_keys")
-    if os.path.exists(keyfile):
-        keyfile_contents = open(keyfile).read()
-        if keyfile_contents[-1] != "\n":
+    sshdir = Path.home() / ".ssh"
+    sshdir.mkdir(mode=0o700, exist_ok=True)
+    keyfile = sshdir / "authorized_keys"
+    keyfile_contents = ""
+
+    if keyfile.exists():
+        keyfile_contents = keyfile.read_text()
+        if not keyfile_contents.endswith("\n"):
             keyfile_contents += "\n"
-    else:
-        keyfile_contents = ""
+
     current_keys = [line.strip() for line in keyfile_contents.splitlines()]
     if key in current_keys:
         print(f"Key {keyname} already installed")
@@ -60,8 +68,8 @@ def update_crontab(name, line, username=None):
 def parse_kernel_version(version):
     return [int(n) for n in version.split(".")]
 
-config_file = script_dir + "/config_files/breathecam.ini"
-if not os.path.exists(config_file):
+config_file = script_dir / "config_files/breathecam.ini"
+if not config_file.exists():
     msg = f"You must create {config_file} before running install.py.\nYou may copy and modify from breathecam.ini-example."
     print(msg)
     raise Exception(msg)
@@ -83,45 +91,13 @@ shell_cmd(f"sudo apt install -y python3-flask")
 # gunicorn is used as the flask server   
 shell_cmd(f"sudo apt-get install -y gunicorn")
 
-    
-print("Check kernel version")
-kernel_version = subprocess.check_output("uname -r", shell=True, encoding="utf-8").strip()
-kernel_version = kernel_version.split("-")[0]
-minimum_kernel_version = "5.15.61"
+print("Install pip packages")
+shell_cmd(f"{venv_dir}/bin/pip install euclid")
 
-if parse_kernel_version(kernel_version) < parse_kernel_version(minimum_kernel_version):
-    msg = f"Require kernel version >= 5.15.61 but have {kernel_version}.  Use sudo apt update && sudo apt upgrade"
-    print(msg)
-    raise(Exception(msg))
-
-
-def add_line_to_config(line, config_file_path="/boot/config.txt"):
-    """
-    Adds the specified line to the config file if it's not already present, using sudo to modify the file.
-
-    :param line: The line to add to the config file.
-    :param config_file_path: Path to the config file (default is '/boot/config.txt').
-    """
-    # Read the existing lines in the config file
-    with open(config_file_path, "r") as file:
-        lines = file.readlines()
-
-    # Check if the line is already present
-    if not any(line.strip() in l for l in lines):
-        # If not present, append it using sudo and tee
-        try:
-            subprocess.run(
-                ["echo", f"\n{line}\n", "|", "sudo", "tee", "-a", config_file_path],
-                check=True,
-                text=True,
-                shell=True
-            )
-            print(f'Added "{line}" to {config_file_path}')
-        except subprocess.CalledProcessError as e:
-            print(f"Error: {e}")
-    else:
-        print(f'"{line}" is already present in {config_file_path}')
-
+def add_line_to_config(line, config_file_path=Path("/boot/firmware/config.txt")):
+    config_file_path = Path(config_file_path)
+    check_cmd = f'grep -qxF "{line}" {config_file_path} || echo "{line}" | sudo tee -a {config_file_path}'
+    subprocess.run(check_cmd, shell=True)
 
 # Add options to config.txt
 # Enable realtime clock (may not actually be present)
@@ -131,8 +107,7 @@ add_line_to_config("dtoverlay=i2c-rtc,ds3231")
 add_line_to_config("dtoverlay=disable-wifi")
 add_line_to_config("dtoverlay=disable-bt")
 
-
-if os.path.exists(os.path.expanduser("~/pi-monitor")):
+if (Path.home() / "pi-monitor").exists():
     print("Updating pi-monitor")
     shell_cmd("~/pi-monitor/update.py")
 else:
@@ -140,7 +115,7 @@ else:
     shell_cmd("cd ~ && git clone --recursive https://github.com/CMU-CREATE-Lab/pi-monitor.git")
     shell_cmd("~/pi-monitor/install.py")
 
-python = "/usr/bin/python3"
+python = Path("/usr/bin/python3")
 
 # We enable to GUI for VNC access, but it doesn't really start unless
 # we have a screen or somebody logs in on VNC.  So there is minimal
@@ -168,13 +143,7 @@ print("Enabling verbose text boot messages")
 shell_cmd("sudo sed --in-place s/quiet// /boot/cmdline.txt")
 shell_cmd("sudo sed --in-place s/splash// /boot/cmdline.txt")
 
-
-print("Halt breathecam services (if running)")
-shell_cmd(f"{script_dir}/tools/kill_all.sh") 
-print("Testing image capture")
-shell_cmd(f"{python} {script_dir}/imageService.py --test-only")
-print("Start breathecam services")
-subprocess.run(f"{script_dir}/run_all.sh", shell=True)
-time.sleep(5)
+# Install crontab to start on reboot
 update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
+
 print("install.py DONE")

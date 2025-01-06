@@ -1,7 +1,7 @@
 import flask, json, os, struct, threading, time
 import logging
 from scrollpos import read_scrollpos, write_scrollpos
-from euclid import Vector2
+from euclid3 import Vector2
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
