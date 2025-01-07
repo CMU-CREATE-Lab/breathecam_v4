@@ -1,0 +1,14 @@
+#!/bin/bash
+# Pull a file from a quad host, the fetched files are prefixed with hostname_
+if [ $# -lt 2 ]; then
+  echo "usage: fetch_quad host_base remote_file"
+  exit 1
+fi
+
+for suffix in a b c d
+do
+	host=$1$suffix.local
+	echo
+	echo $host':'
+	scp -o StrictHostKeyChecking=no breathecam@$host:$2 $host"_${2##*/}"
+done

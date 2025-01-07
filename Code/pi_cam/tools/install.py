@@ -3,20 +3,24 @@
 from pathlib import Path
 import getpass, subprocess, sys
 
-script_dir = Path(__file__).resolve().parent
+script_dir = Path(__file__).resolve().parent.parent
 username = getpass.getuser()
 debian_release_version = int(subprocess.check_output("lsb_release -rs", shell=True, encoding="utf-8").strip().lower())
 
-venv_dir = os.path.expanduser("~/.venv")
-if not os.path.exists(venv_dir):
-    print(f"Creating Python virtual environment at {venv_dir}")
-    shell_cmd(f"python3 -m venv {venv_dir}")
-else:
-    print(f"Virtual environment already exists at {venv_dir}")
+print(f"script_dir = {script_dir}")
 
 def shell_cmd(cmd):
     print(cmd)
     print(subprocess.check_output(cmd, shell=True, encoding="utf-8"))
+
+
+venv_dir = script_dir / ".venv"
+if not venv_dir.exists():
+    print(f"Creating Python virtual environment at {venv_dir}")
+    shell_cmd(f"python3 -m venv --system-site-packages {venv_dir}")
+else:
+    print(f"Virtual environment already exists at {venv_dir}")
+
 
 def install_ssh_key(key):
     keyname = key.split()[-1]
@@ -68,6 +72,7 @@ def update_crontab(name, line, username=None):
 def parse_kernel_version(version):
     return [int(n) for n in version.split(".")]
 
+
 config_file = script_dir / "config_files/breathecam.ini"
 if not config_file.exists():
     msg = f"You must create {config_file} before running install.py.\nYou may copy and modify from breathecam.ini-example."
@@ -83,7 +88,7 @@ else:
     shell_cmd("sudo apt install -y libcamera0 python3-libcamera libimage-exiftool-perl python3-picamera2 npm")
 
 # user for local time server from realtime clock in case net is down
-shell_cmd("sudo apt install -y ntp")
+shell_cmd("sudo apt install -y ntp ntpstat")
 
 print("Installing python3-flask from apt")
 shell_cmd(f"sudo apt install -y python3-flask")
@@ -92,7 +97,7 @@ shell_cmd(f"sudo apt install -y python3-flask")
 shell_cmd(f"sudo apt-get install -y gunicorn")
 
 print("Install pip packages")
-shell_cmd(f"{venv_dir}/bin/pip install euclid")
+shell_cmd(f"{venv_dir}/bin/pip install euclid3")
 
 def add_line_to_config(line, config_file_path=Path("/boot/firmware/config.txt")):
     config_file_path = Path(config_file_path)
