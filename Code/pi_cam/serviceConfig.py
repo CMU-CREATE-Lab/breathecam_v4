@@ -6,6 +6,18 @@ import os.path
 import socket
 from sys import exc_info
 import configparser
+import subprocess
+
+def is_ntp_synchronized():
+    try:
+        result = subprocess.run(["ntpstat"], capture_output=True, text=True)
+        return result.returncode == 0  # ntpstat returns 0 when synchronized
+    except FileNotFoundError:
+        print("ntpstat not found. Ensure it is installed.")
+        return False
+    except Exception as e:
+        print(f"Error checking NTP synchronization: {e}")
+        return False
 
 class ServiceConfig:
     '''Wraps common code for reading configuration and logger initialization.'''
@@ -26,7 +38,7 @@ class ServiceConfig:
         # where the timestamp is in the log file name we can't create the log
         # file until we have the time.  Also this insures that none of our
         # services start until we have the time.
-        while not os.path.exists("/run/systemd/timesync/synchronized"):
+        while not is_ntp_synchronized():
             print("waiting for time sync")
             time.sleep(5.0)
 

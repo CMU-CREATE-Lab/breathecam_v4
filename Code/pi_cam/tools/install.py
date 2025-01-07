@@ -111,16 +111,9 @@ add_line_to_config("dtoverlay=i2c-rtc,ds3231")
 # when inside the enclosure (and doesn't work anyway in that case).
 add_line_to_config("dtoverlay=disable-wifi")
 add_line_to_config("dtoverlay=disable-bt")
-
-if (Path.home() / "pi-monitor").exists():
-    print("Updating pi-monitor")
-    shell_cmd("~/pi-monitor/update.py")
-else:
-    print("Installing pi-monitor")
-    shell_cmd("cd ~ && git clone --recursive https://github.com/CMU-CREATE-Lab/pi-monitor.git")
-    shell_cmd("~/pi-monitor/install.py")
-
-python = Path("/usr/bin/python3")
+## Camera auto-detect doesn't work with the Arducam compact HQ cam, so force it
+add_line_to_config("camera_auto_detect=0")
+add_line_to_config("dtoverlay=imx477")
 
 # We enable to GUI for VNC access, but it doesn't really start unless
 # we have a screen or somebody logs in on VNC.  So there is minimal
@@ -150,5 +143,14 @@ shell_cmd("sudo sed --in-place s/splash// /boot/cmdline.txt")
 
 # Install crontab to start on reboot
 update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
+
+# Install/update pi-monitor
+if (Path.home() / "pi-monitor").exists():
+    print("Updating pi-monitor")
+    shell_cmd("~/pi-monitor/update.py")
+else:
+    print("Installing pi-monitor")
+    shell_cmd("cd ~ && git clone --recursive https://github.com/CMU-CREATE-Lab/pi-monitor.git")
+    shell_cmd("~/pi-monitor/install.py")
 
 print("install.py DONE")

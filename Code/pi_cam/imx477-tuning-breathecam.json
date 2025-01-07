@@ -36,7 +36,14 @@
             }
         },
         {
-            "rpi.sdn": { }
+            "rpi.denoise": {
+                "enable": 1,
+                "sigma": 1.0,
+                "sdn": {
+                    "strength": 0.5,
+                    "threshold": 0.05
+                }
+            }
         },
         {
             "rpi.awb":

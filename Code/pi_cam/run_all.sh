@@ -3,7 +3,7 @@
 
 # Define common paths
 BASE_DIR=/home/breathecam/breathecam/Code/pi_cam
-VENV_DIR=$BASE_DIR
+VENV_DIR=$BASE_DIR/.venv
 LOG_DIR=$BASE_DIR/logs
 
 # Change to the base directory

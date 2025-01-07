@@ -18,13 +18,13 @@ else
 fi
 
 echo "Halt breathecam services (if running)"
-${script_dir}tools/kill_all.sh
+${script_dir}/tools/kill_all.sh
 
 echo "Testing image capture"
-python3 "${script_dir}imageService.py" --test-only
+python3 "${script_dir}/imageService.py" --test-only
 
 echo "^C if you don't want to run_all"
 sleep 5
 
 echo "Start breathecam services"
-${script_dir}run_all.sh
+${script_dir}/run_all.sh

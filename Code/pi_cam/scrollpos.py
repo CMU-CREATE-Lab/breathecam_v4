@@ -1,5 +1,5 @@
 import json, os, threading
-from euclid import Vector2
+from euclid3 import Vector2
 from typing import Tuple
 
 # Return the scroll position as a Vector2 ranging 0..1 and the string mode
