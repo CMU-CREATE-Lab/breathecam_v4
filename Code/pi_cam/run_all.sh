@@ -35,4 +35,4 @@ sudo su -c "node_modules/.bin/tsc" breathecam
 # We need a long worker timeout because the worker loops during the entire image streaming.
 # This is set to 15 minutes.
 echo "Running webConsole"
-sudo su -c "source $VENV_DIR/bin/activate && gunicorn -w 2 -b 0.0.0.0:8000 webConsole:app --timeout 900 >> $LOG_DIR/webConsole.log 2>&1 &" breathecam
+sudo -u breathecam bash -c "cd $BASE_DIR && source $VENV_DIR/bin/activate && PYTHONPATH=$BASE_DIR gunicorn -w 2 -b 0.0.0.0:8000 webConsole:app --timeout 900 >> $LOG_DIR/webConsole.log 2>&1 &"

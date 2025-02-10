@@ -93,11 +93,9 @@ shell_cmd("sudo apt install -y ntp ntpstat")
 print("Installing python3-flask from apt")
 shell_cmd(f"sudo apt install -y python3-flask")
 
-# gunicorn is used as the flask server   
-shell_cmd(f"sudo apt-get install -y gunicorn")
-
 print("Install pip packages")
-shell_cmd(f"{venv_dir}/bin/pip install euclid3")
+# gunicorn is used as the flask server   
+shell_cmd(f"{venv_dir}/bin/pip install euclid3 gunicorn")
 
 def add_line_to_config(line, config_file_path=Path("/boot/firmware/config.txt")):
     config_file_path = Path(config_file_path)
