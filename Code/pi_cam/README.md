@@ -43,13 +43,19 @@ You can set the wireless country using raspi-config so login won't nag you, but 
 
 It is handy to initialize multiple cards by cloning the card from an existing Pi host which has been set up as above.  This is less labor-intensive than repeating the initialization steps for each host.  See tools/clone.sh, details below.
 
-The goal is to have the install.py script set up an configuration which is actually necessary for the breathecam software to run, or for remote access.  This insures that we can easily create a functional system from scratch. But there are various minor things like git environment options, emacs, etc., which give a desirable environment, and it isn't necessary to figure out what all these things are and how to script their configuration.
+The goal is to have the install.py script set up a configuration which is actually necessary for the breathecam software to run, or for remote access.  This insures that we can easily create a functional system from scratch. But there are various minor things like git environment options, emacs, etc., which give a desirable environment, and it isn't necessary to figure out what all these things are and how to script their configuration.
 
 Cameras are named according to location, camera number, and board.  An example is clairton3a.  This is the "a" camera board in the 3 camera at clairton.  Mostly we have used the camera number to identify different builds installed at the same site, so we might roll out clairton3 while clairton2 is still running, in case there is an issue with the new camera.  In a quad camera the boards are a, b, c, d.  In a 4x1 camera array "a" is the rightmost view from the camera perspective.  See tools/run_quad which will run a command on all four boards.
 
 Set up a 4-port USB hub attached to a Pi (bcinit.local), and put four cards in four USB sd card readers.  These cards will appear as sda, sdb, etc., in the order that you plug them in.  Then you can do:
   tools/clone.sh host1
 to initialize cards for hosts host1a, host1b, host1c, host1d
+
+Before doing this, do:
+  tools/kill_all.sh
+  rm logs/* image/*.jpg
+  touch config_files/run_inhibit
+This cleans up any current breathecam outputs and makes sure the clone images won't try to run until they are fully configured.
 
 clone.sh uses the rpi-clone script, https://github.com/billw2/rpi-clone.
 ```
