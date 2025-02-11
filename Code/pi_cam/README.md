@@ -1,6 +1,6 @@
 # RPI SETUP
 
-### Create raspbian image with Raspberry Pi Imager
+### Create Pi OS image with Raspberry Pi Imager
 - Download imager, install and run. (Run as adminstrator under windows or it
   may not be able to reformat the SD card..)
 - Select 64-bit pi OS, board pi4
@@ -47,15 +47,18 @@ The goal is to have the install.py script set up an configuration which is actua
 
 Cameras are named according to location, camera number, and board.  An example is clairton3a.  This is the "a" camera board in the 3 camera at clairton.  Mostly we have used the camera number to identify different builds installed at the same site, so we might roll out clairton3 while clairton2 is still running, in case there is an issue with the new camera.  In a quad camera the boards are a, b, c, d.  In a 4x1 camera array "a" is the rightmost view from the camera perspective.  See tools/run_quad which will run a command on all four boards.
 
-Set up a 4-port USB hub attached to a Pi (bcinit.local), and put four cards in four USB sd card readers.  These cards will appear as sda, sdb, etc., in the order that you plug them in.  Then you can do:
+Set up a 4-port USB hub attached to a Pi (bcinit.local).
+Do this *before* inserting the SD cards to be cloned onto. This prevents them from getting auto mounted, which can cause various problems.
+```
+sudo systemctl stop udisks2.service
+```
+Put four cards in four USB sd card readers.  These cards will appear as sda, sdb, etc., in the order that you plug them in.  Then you can do:
   tools/clone.sh host1
 to initialize cards for hosts host1a, host1b, host1c, host1d
 
-clone.sh uses the rpi-clone script, https://github.com/billw2/rpi-clone.
+clone.sh uses the rpi-clone script, https://github.com/geerlingguy/rpi-clone
 ```
-	$ git clone https://github.com/billw2/rpi-clone.git 
-	$ cd rpi-clone
-	$ sudo cp rpi-clone rpi-clone-setup /usr/local/sbin
+curl https://raw.githubusercontent.com/geerlingguy/rpi-clone/master/install | sudo bash
 ```
 
   rpi-clone sda
@@ -64,6 +67,7 @@ will clone the config to the card mounted on sda (the first USB device attached)
 sets the host name to "hosta", sets the volume label to "hosta", and skips some confirm prompts.
 
 One advantage of rpi-clone is that it uses rsync to transfer files, so if the modification is small it will go much faster than a full bit-copy.  rpi-clone is not set up to run parallel instances (a fixed mount point, for one thing), but you can script multiple sequential runs.
+
 
 
 ### Per host configuration (ZeroTier)
@@ -162,11 +166,11 @@ desktop, no auto login), if you start headless, then it will not start all of th
 actually running "virtual" or not.  Possibly resource usage by the VNC session could affect operation.
 
 
-Camera setup:
+### Camera setup:
 
 In the field you can check that the camera is working, and the camera aiming, using the e-cam status page.  You can also use the "webconsole", point your browser to to: 
     http://<pihost>:8000
-This is easier with a laptop with zerotier where you can connect to eg. clairton3.local.  Webconsole has full resolution view with or without a zoom for focusing.  The update rate is pretty low, <1 FPS, but still faster than the usual upload rates of 3 sec or slower.
+This is easier with a laptop with zerotier where you can connect to eg. clairton3.local.  Webconsole has full resolution view with or without a zoom for focusing.  The update rate is pretty low, less than 1 FPS, but still faster than the usual upload rates of 3 sec or slower.
 
 The lenses should be pre-focused on a distant subject before taking the camera out for installation.  I do this by connecting using VNC and then using the libcamera-still preview.  On VNC it is pretty much necessary to use the --qt-preview option to libcamera-still, which changes to a smaller window with different update method. The default preview sometimes kind of works on VNC, but bogs down badly.
 
@@ -178,3 +182,142 @@ or for full resolution:
     libcamera-still -t 0 --qt-preview --viewfinder-mode 4056:3040:8 --roi 0.5,0.5,0.05,0.05
 
 You can move the ROI if needed.
+
+
+### Realtime clock and NTP config
+
+We have multiple Raspberry Pi boards on the same local network. One board, called "clock," is equipped with a battery-backed hardware clock (DS3231). The other boards, called "clients," have no hardware clock. This setup ensures that all boards keep accurate time even if there is no internet or if the router is down.
+
+Currently we put the clock on the "a" host, and the other hosts are clients.  See *.conf config files in config-files/ directory. These are copied to /etc directories to override system defaults.
+
+#### Clock host:
+On the clock host, after we have gotten NTP off the internet initialize the realtime clock:
+```
+sudo hwclock -w
+```
+
+
+
+## Time Distribution Scheme Overview
+
+
+
+### 1. Failure Modes and Goals
+
+We want to handle:
+
+1. **Internet Uplink Fails**: The router may still give out IP addresses (DHCP), but there's no external connectivity. Clients still need accurate time for logging.
+2. **Router or DHCP Fails**: The boards can still talk on the local network (switch or direct), but the router is offline. The "clients" must still get time from "clock."
+3. **Partial Board Failures**: If a single "client" fails, the others continue syncing from "clock" or from the internet if available.
+
+In all cases, the "clock" board's DS3231 acts as a reliable local time source.
+
+### 2. Services and Components
+
+1. **Hardware Clock (DS3231)** on the "clock" board  
+   - Battery-backed, so it keeps time even when powered off.  
+   - Enabled via an "i2c-rtc" overlay (for example, `dtoverlay=i2c-rtc,ds3231` in `/boot/config.txt`).
+
+2. **NTP Daemon (NTPsec or classic ntpd)**  
+   - "clock" uses the hardware clock as a fallback ("local clock driver" or by reading the DS3231 at boot).  
+   - "clients" reference "clock" plus any public NTP pools when available.
+
+3. **Avahi (mDNS)**  
+   - Allows the "clients" to find "clock" by a .local name, e.g. "breathecam_ntp.local," even if the router or DNS is absent.  
+   - Each client uses `server breathecam_ntp.local` in ntp.conf.
+
+4. **Syncing Hardware Clock**  
+   - A periodic script writes system time (disciplined by NTP) back to the hardware clock via `hwclock -w`.  
+   - Ensures the DS3231 remains accurate if the system shuts down unexpectedly.
+
+### 3. Overall Flow
+
+1. **"clock" Board Boot**  
+   - Reads DS3231 time on startup (for example, `hwclock -s`).  
+   - NTP references both the public NTP pool (if internet is up) and a local clock fallback (for example, `server 127.127.1.0 stratum 10`).  
+   - If there's no internet, it still has valid time from DS3231.
+
+2. **"client" Boards Boot**  
+   - No battery-backed time, so they start at an arbitrary clock.  
+   - NTP tries to sync from "clock" at "breathecam_ntp.local" (via Avahi).  
+   - If the internet is up, they also use public pool servers. Otherwise, they rely solely on "clock."
+
+3. **Avahi**  
+   - "clock" board is configured in `/etc/avahi/avahi-daemon.conf`, setting `host-name=breathecam_ntp`.  
+   - "clients" can always resolve "breathecam_ntp.local" using mDNS, even with no router or DHCP.
+
+4. **Syncing DS3231**  
+   - A cron job or systemd timer on "clock" calls `hwclock --systohc` once per day (or at shutdown).  
+   - If NTP has improved system time, the DS3231 remains accurate for future reboots.
+
+### 4. Key Config Highlights
+
+#### 4.1 "clock" Board (with DS3231)
+
+- **RTC Overlay** (in `/boot/config.txt`):  
+  ```
+  dtoverlay=i2c-rtc,ds3231
+  ```
+- **NTP Fallback** (snippet in `ntp.conf` or similar):
+  ```
+  pool 0.debian.pool.ntp.org iburst
+  server 127.127.1.0
+  fudge 127.127.1.0 stratum 10
+  tos minclock 1 minsane 1
+  ```
+  That means:
+  - Use the public pool if available.  
+  - Fallback to local clock driver at stratum 10.  
+  - Accept only one source as "enough."
+
+- **Avahi** (`/etc/avahi/avahi-daemon.conf`):
+  ```
+  [server]
+  host-name=breathecam_ntp
+  ```
+  This publishes `breathecam_ntp.local`.
+
+- **Sync RTC** (for example, a daily cron job):
+  ```
+  0 0 * * * /sbin/hwclock --systohc
+  ```
+
+#### 4.2 "client" Boards
+
+- **NTP**:
+  ```
+  server breathecam_ntp.local iburst prefer
+  pool 0.debian.pool.ntp.org iburst
+  tos minclock 1 minsane 1
+  ```
+  This ensures that if "breathecam_ntp.local" is reachable, they lock onto it, but they also use the public pool when available.
+
+- **Avahi**:
+  - Generally left at defaults so they can do mDNS lookups of "breathecam_ntp.local."
+
+### 5. "No Router" or "No Internet"
+
+1. **No Internet**  
+   - "clock" is still valid via DS3231 or local clock driver.  
+   - "clients" use Avahi to find "clock" on the LAN.  
+   - Everyone remains in sync.
+
+2. **No Router or DHCP**  
+   - Pi boards might get link-local addresses (169.254.x.x).  
+   - Avahi still works over multicast, so "breathecam_ntp.local" resolves.  
+   - Clients sync time from "clock."
+
+3. **Partial Failures**  
+   - A single "client" can fail without affecting others.  
+   - As long as "clock" stays up, the network has a valid time source.
+
+### 6. Summary
+
+This arrangement allows robust time distribution among a group of Raspberry Pi boards:
+
+- One board ("clock") has the DS3231 hardware clock and runs NTP with a fallback local clock driver.  
+- All other boards ("clients") point to "breathecam_ntp.local" plus an NTP pool for internet time if available.  
+- Avahi ensures local name resolution works even if the router or DNS is down.  
+- The DS3231 is periodically updated via `hwclock -w` so it remains accurate if power is lost.  
+
+As a result, the system provides valid timestamps for image logging or other tasks, regardless of network or router failures.
