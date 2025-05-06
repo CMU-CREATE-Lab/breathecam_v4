@@ -49,12 +49,12 @@ curl https://raw.githubusercontent.com/geerlingguy/rpi-clone/master/install | su
 ```
 If you want to clone just one card you can use rpi-clone directly. This will clone the r8unning system to the card mounted on sda (the first USB device attached):
 ```
-rpi-clone sda
+sudo rpi-clone sda
 ```
 
 Usually you will want to do what clone.sh does, set the host name to "hosta", set the volume label to "hosta", and skip some confirm prompts:
 ```
-  rpi-clone sda -s hosta -L hosta -U
+  sudo rpi-clone sda -s hosta -L hosta -U
 ```
 
 One advantage of rpi-clone is that it uses rsync to transfer files, so if the modification is small it will go much faster than a full bit-copy.  clone.sh doesn't run parallel instances because rpi-clone can't handle that (a fixed mount point, for one thing.)
@@ -69,7 +69,7 @@ Do this *before* inserting the card readers with the SD cards to be cloned:
 sudo systemctl stop udisks2.service
 # Clean up any current breathecam outputs
 tools/kill_all.sh
-rm logs/* image/*.jpg
+rm -f logs/* image/*.jpg
 # make sure the clone images won't try to run until they are fully configured.
 touch config_files/run_inhibit
 ```
