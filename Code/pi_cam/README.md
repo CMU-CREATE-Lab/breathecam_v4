@@ -179,9 +179,28 @@ We have multiple Raspberry Pi boards on the same local network. One board, calle
 Currently we put the clock on the "a" host, and the other hosts are clients.  See \*.conf config files in config-files/ directory. These are copied to /etc directories to override system defaults.
 
 #### Clock host:
+
 On the clock host, after we have gotten NTP off the internet initialize the realtime clock:
 ```
 sudo hwclock -w
+```
+
+## Clock NTP configuration setup
+
+You need some configuration setup of ntp.conf and avahi-daemon.conf in order to get the local time distribution working (as described below.)
+
+On time server:
+```
+cd breathecam/Code/pi_cam/config_files/
+sudo cp -p avahi-daemon.clock.conf /etc/avahi/avahi-daemon.conf 
+sudo cp -p ntp.clock.conf /etc/ntpsec/ntp.conf
+```
+
+On time client:
+```
+cd breathecam/Code/pi_cam/config_files/
+sudo cp -p avahi-daemon.default.conf /etc/avahi/avahi-daemon.conf 
+sudo cp -p ntp.client.conf /etc/ntpsec/ntp.conf
 ```
 
 ## Time Distribution Scheme Overview
