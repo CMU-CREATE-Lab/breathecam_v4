@@ -178,16 +178,47 @@ We have multiple Raspberry Pi boards on the same local network. One board, calle
 
 Currently we put the clock on the "a" host, and the other hosts are clients.  See \*.conf config files in config-files/ directory. These are copied to /etc directories to override system defaults.
 
-#### Clock host:
+### All hosts:
+This assigns a link local IPV4 address so that Avahi can publish it as .local
+```
+# 1) normal wired profile (you already have this one)
+sudo nmcli connection modify "Wired connection 1" \
+        ipv4.method auto \
+        ipv4.dhcp-timeout 15 \
+        ipv4.may-fail yes \
+        connection.autoconnect-priority 0
 
+# 2) EXTRA link-local-only profile with lower priority
+sudo nmcli connection add type ethernet ifname eth0 con-name eth0-ll \
+        ipv4.method link-local \
+        ipv4.may-fail yes \
+        connection.autoconnect-priority -20
+```
+**Put this in install.py**
+
+With later versions of netmanager this version is more tasteful and concise, but isn't supported by network manager in Bookworm:
+
+```
+ sudo nmcli connection modify "Wired connection 1" \
+     ipv4.method auto \
+     ipv4.link-local fallback \
+     ipv4.dhcp-timeout 15
+```
+### Clock host:
 On the clock host, after we have gotten NTP off the internet initialize the realtime clock:
 ```
 sudo hwclock -w
 ```
+Also need to set up cron job to synch the hardware clock:
+```
+0 0 * * * /sbin/hwclock --systohc
+```
+**Or something. Automate this?**
 
 ## Clock NTP configuration setup
 
 You need some configuration setup of ntp.conf and avahi-daemon.conf in order to get the local time distribution working (as described below.)
+**Make scripts to do clock and client setup?***
 
 On time server:
 ```
