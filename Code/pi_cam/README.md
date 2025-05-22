@@ -43,17 +43,6 @@ Cameras are named according to location, camera number, and board.  An example i
 It is handy to initialize multiple cards by cloning the card from an existing Pi host which has been set up as above.  This is less labor-intensive than repeating the initialization steps for each host.  See tools/clone.sh, details below.
 
 The goal is to have the install.py script set up a configuration which is actually necessary for the breathecam software to run, or for remote access.  This insures that we can easily create a functional system from scratch. But there are various minor things like git environment options, emacs, etc., which give a desirable environment, and it isn't necessary to figure out what all these things are and how to script their configuration.
-
-Set up a 4-port USB hub attached to a Pi (bcinit.local), and put four cards in four USB sd card readers.  These cards will appear as sda, sdb, etc., in the order that you plug them in.  Then you can do:
-  tools/clone.sh host1
-to initialize cards for hosts host1a, host1b, host1c, host1d
-
-Before doing this, do:
-  tools/kill_all.sh
-  rm logs/* image/*.jpg
-  touch config_files/run_inhibit
-This cleans up any current breathecam outputs and makes sure the clone images won't try to run until they are fully configured.
-
 ### Install rpi-clone
 clone.sh uses the rpi-clone script, https://github.com/geerlingguy/rpi-clone. You can install this by:
 ```
@@ -64,16 +53,14 @@ If you want to clone just one card you can use rpi-clone directly. This will clo
 sudo rpi-clone sda
 ```
 
-Usually you will want to do what clone.sh does, set the host name to "hosta", set the volume label to "hosta", and skip some confirm prompts:
+Usually you will want to do what `clone.sh` does --- set the host name to "hosta", set the volume label to "hosta", and skip some confirm prompts:
 ```
   sudo rpi-clone sda -s hosta -L hosta -U
 ```
 
 One advantage of rpi-clone is that it uses rsync to transfer files, so if the modification is small it will go much faster than a full bit-copy.  clone.sh doesn't run parallel instances because rpi-clone can't handle that (a fixed mount point, for one thing.)
-
 ### Clone procedure
-
-Set up a 4-port USB hub attached to bcinit.local. Physically label four USB SD card *readers* A, B, C, D. Physically label four SD *cards* A, B, C, D and install them into the readers, but *do not* insert the card readers into the USB hub yet.
+Set up a 4-port USB hub attached to `bcinit.local`. Physically label four USB SD card *readers* A, B, C, D. Physically label four SD *cards* A, B, C, D and install them into the readers, but *do not* insert the card readers into the USB hub yet.
 
 Do this *before* inserting the card readers with the SD cards to be cloned:
 ```
@@ -85,14 +72,36 @@ rm -f logs/* image/*.jpg
 # make sure the clone images won't try to run until they are fully configured.
 touch config_files/run_inhibit
 ```
-Insert the SD card readers into the hub *in order*, since the cards will appear as sda, sdb, etc., in the order that you plug them in.  Then clone.sh can clone cards for hosts host1a, host1b, host1c, host1d:
+
+I leave `bcinit.local` unconfigured on Zerotier to avoid host ID confusion after cloning, but if you are cloning from a host that already has Zerotier configured then clear its identity by doing:
+
+```
+sudo service zerotier-one stop
+sudo rm /var/lib/zerotier-one/identity.*
+```
+Likewise, if you want to keep an existing identity after a reinstall, you can copy the old identity.* to the new card. 
+
+Insert the SD card readers into the hub *in order*, since the cards will appear as sda, sdb, etc., in the order that you plug them in.  Then `clone.sh` can clone cards for hosts host1a, host1b, host1c, host1d:
 ```
 tools/clone.sh host1
 ```
-## Per host configuration (ZeroTier)
- Boot the host to be configured and run tools/zerotier_add.py on that host.  On the ZeroTier web site, enable display of unconfigured breathecam hosts.  When the new one appears, give it a suitable name and enable it.  zerotier_add.py will delay until you add the host, looping until it is successful. 
+## Per host configuration
+Boot the new host from a cloned card and ssh to it with eg. `ssh breathecam@host1a`.  Run `tools/zerotier_add.py` on that host.  On the [Zerotier web site](https://my.zerotier.com/network/db64858fedb73ddd), enable display of never-authorized breathecam hosts.  This filter option only appears when there is a new host requesting access. When the new one appears, give it the Pi hostname as its name and authorize it.  `zerotier_add.py` will delay until you add the host, looping until it is successful. 
  
- zerotier_join.py also does ssh-keygen to generate a new host ssh key so that all the hosts don't have the same key, which would cause ssh to complain.
+ `zerotier_add.py` also does `ssh-keygen` to generate a new host ssh key so that all the hosts don't have the same key, which causes ssh to complain.
+
+You need additional per-host configuration to get the local NTP time distribution working (as described below.)  Do these after `tools/zerotier_join.py`:
+
+On time server (the "a" host):
+```
+tools/net_config_clock.sh
+```
+
+On time clients (the "bcd" hosts):
+```
+tools/net_config_client.sh
+```
+
 ## Disabling startup on boot
 You can inhibit the boot-time startup of breathecam by creating the file run_inhibit:
 ```
@@ -118,7 +127,7 @@ Each Pi4b board has several LEDs:
 * Tiny green LED:  flashes when accessing SD card
 * Large green LEDs on ethernet:  flashes when uploading images (or other net activity)
 ## Remote access:
-We are currently using ZeroTier.  This is installed and configured on the pi boards by tools/zerotier_join.py (see per-host configuration above.) On a host where ZeroTier is installed and configured for the breathecam net you should be able to access a host by hostname.local.
+We are currently using ZeroTier.  This is installed and configured on the pi boards by `tools/zerotier_join.py` (see per-host configuration above.) On a host where ZeroTier is installed and configured for the breathecam net you should be able to access a host by hostname.local.
 
 For the machine that you connect *from* you will also need to install and configure the zerotier client.  This can be windows or mac as well as linux.  On any Linux machine, it can be installed via:
 ```
@@ -129,18 +138,11 @@ And then to join the network run the following command:
 ```
 sudo zerotier-cli join db64858fedb73ddd
 ```
+On windows you use the gui to join somehow.
 
-Log into the zerotier web console and add this host in the same way as for the pi. You'll use the same network ID (db64...) above.
-
-To reset the ZeroTier identity after a disk/CF clone, do:
-```
-sudo service zerotier-one stop
-sudo rm /var/lib/zerotier-one/identity.*
-sudo service zerotier-one start
-```
-Likewise, if you want to keep an existing identity after a reinstall, you can copy the old identity.* to the new card.
+Log into the  [Zerotier web site](https://my.zerotier.com/network/db64858fedb73ddd) and add this host in the same way as for the pi. You'll use the same network ID (db64...) above.
 ### VNC access
-\[The settings described here are done automatically by install.py\]
+**\[The settings described here are done automatically by install.py\]**
 
 There are various ways that VNC could presumably work, but I tried a number of things that didn't. **This only seems to work using the legacy X11 mode** 
 
@@ -176,9 +178,9 @@ You can move the ROI if needed.
 
 We have multiple Raspberry Pi boards on the same local network. One board, called "clock," is equipped with a battery-backed hardware clock (DS3231). The other boards, called "clients," have no hardware clock. This setup ensures that all boards keep accurate time even if there is no internet or if the router is down.
 
-Currently we put the clock on the "a" host, and the other hosts are clients.  See \*.conf config files in config-files/ directory. These are copied to /etc directories to override system defaults.
-
+Currently we put the clock on the "a" host, and the other hosts are clients.  See `*.conf` config files in `config-files/` directory. Scripts `tools/net_config*.sh` copy these files to `/etc` directories to override system defaults.
 ### All hosts:
+**\[This is being done by tools/net_config_common.sh which is called from install.py]**
 This assigns a link local IPV4 address so that Avahi can publish it as .local
 ```
 # 1) normal wired profile (you already have this one)
@@ -194,7 +196,6 @@ sudo nmcli connection add type ethernet ifname eth0 con-name eth0-ll \
         ipv4.may-fail yes \
         connection.autoconnect-priority -20
 ```
-**Put this in install.py**
 
 With later versions of netmanager this version is more tasteful and concise, but isn't supported by network manager in Bookworm:
 
@@ -203,35 +204,6 @@ With later versions of netmanager this version is more tasteful and concise, but
      ipv4.method auto \
      ipv4.link-local fallback \
      ipv4.dhcp-timeout 15
-```
-### Clock host:
-On the clock host, after we have gotten NTP off the internet initialize the realtime clock:
-```
-sudo hwclock -w
-```
-Also need to set up cron job to synch the hardware clock:
-```
-0 0 * * * /sbin/hwclock --systohc
-```
-**Or something. Automate this?**
-
-## Clock NTP configuration setup
-
-You need some configuration setup of ntp.conf and avahi-daemon.conf in order to get the local time distribution working (as described below.)
-**Make scripts to do clock and client setup?***
-
-On time server:
-```
-cd breathecam/Code/pi_cam/config_files/
-sudo cp -p avahi-daemon.clock.conf /etc/avahi/avahi-daemon.conf 
-sudo cp -p ntp.clock.conf /etc/ntpsec/ntp.conf
-```
-
-On time client:
-```
-cd breathecam/Code/pi_cam/config_files/
-sudo cp -p avahi-daemon.default.conf /etc/avahi/avahi-daemon.conf 
-sudo cp -p ntp.client.conf /etc/ntpsec/ntp.conf
 ```
 
 ## Time Distribution Scheme Overview
@@ -253,16 +225,15 @@ In all cases, the "clock" board's DS3231 acts as a reliable local time source.
    - Enabled via an "i2c-rtc" overlay (for example, `dtoverlay=i2c-rtc,ds3231` in `/boot/config.txt`).
 
 2. **NTP Daemon (NTPsec or classic ntpd)**  
-   - "clock" uses the hardware clock as a fallback ("local clock driver" or by reading the DS3231 at boot).  
+   - "clock" uses the hardware clock as a fallback (by reading the DS3231 at boot).  
    - "clients" reference "clock" plus any public NTP pools when available.
 
 3. **Avahi (mDNS)**  
    - Allows the "clients" to find "clock" by a .local name, e.g. "breathecam_ntp.local," even if the router or DNS is absent.  
    - Each client uses `server breathecam_ntp.local` in ntp.conf.
-
-4. **Syncing Hardware Clock**  
-   - A periodic script writes system time (disciplined by NTP) back to the hardware clock via `hwclock -w`.  
-   - Ensures the DS3231 remains accurate if the system shuts down unexpectedly.
+   
+4. **Netmanger**
+   - Has to be configured to allow fallback to link-local IP assignment if there is no DHCP service, see `tools/net_config_common.sh`.
 
 ### 3. Overall Flow
 
@@ -280,54 +251,32 @@ In all cases, the "clock" board's DS3231 acts as a reliable local time source.
    - "clock" board is configured in `/etc/avahi/avahi-daemon.conf`, setting `host-name=breathecam_ntp`.  
    - "clients" can always resolve "breathecam_ntp.local" using mDNS, even with no router or DHCP.
 
-4. **Syncing DS3231**  
-   - A cron job or systemd timer on "clock" calls `hwclock --systohc` once per day (or at shutdown).  
-   - If NTP has improved system time, the DS3231 remains accurate for future reboots.
+The kernel should automatically synchronize the hardware clock to NTP time once NTP is synchronized.
 
 ### 4. Key Config Highlights
 
 #### 4.1 "clock" Board (with DS3231)
-
 - **RTC Overlay** (in `/boot/config.txt`):  
+   **\[This is done by `install.py` on all cards]**
   ```
   dtoverlay=i2c-rtc,ds3231
   ```
-- **NTP Fallback** (snippet in `ntp.conf` or similar):
-  ```
-  pool 0.debian.pool.ntp.org iburst
-  server 127.127.1.0
-  fudge 127.127.1.0 stratum 10
-  tos minclock 1 minsane 1
-  ```
-  That means:
+- **NTP Fallback**: 
+   see `config_files/ntp.clock.conf`
   - Use the public pool if available.  
   - Fallback to local clock driver at stratum 10.  
   - Accept only one source as "enough."
 
-- **Avahi** (`/etc/avahi/avahi-daemon.conf`):
-  ```
-  [server]
-  host-name=breathecam_ntp
-  ```
-  This publishes `breathecam_ntp.local`.
-
-- **Sync RTC** (for example, a daily cron job):
-  ```
-  0 0 * * * /sbin/hwclock --systohc
-  ```
-
+- **Avahi**:
+   See `config_files/avahi_daemon.clock.conf`
+   This publishes `breathecam_ntp.local`.
 #### 4.2 "client" Boards
-
 - **NTP**:
-  ```
-  server breathecam_ntp.local iburst prefer
-  pool 0.debian.pool.ntp.org iburst
-  tos minclock 1 minsane 1
-  ```
-  This ensures that if "breathecam_ntp.local" is reachable, they lock onto it, but they also use the public pool when available.
+  See `config_files/ntp.client.conf`
+  - This ensures that if "breathecam_ntp.local" is reachable, they lock onto it, but they also use the public pool when available.
 
 - **Avahi**:
-  - Generally left at defaults so they can do mDNS lookups of "breathecam_ntp.local."
+  - left at defaults so they can do mDNS lookups of "breathecam_ntp.local."
 
 ### 5. "No Router" or "No Internet"
 
@@ -352,6 +301,7 @@ This arrangement allows robust time distribution among a group of Raspberry Pi b
 - One board ("clock") has the DS3231 hardware clock and runs NTP with a fallback local clock driver.  
 - All other boards ("clients") point to "breathecam_ntp.local" plus an NTP pool for internet time if available.  
 - Avahi ensures local name resolution works even if the router or DNS is down.  
-- The DS3231 is periodically updated via `hwclock -w` so it remains accurate if power is lost.  
+- link-local IP assignment gives Avahi an IP to distribute.
+- The DS3231 is periodically updated by the kernel so it remains accurate.  
 
 As a result, the system provides valid timestamps for image logging or other tasks, regardless of network or router failures.
