@@ -143,7 +143,7 @@ shell_cmd("sudo sed --in-place s/splash// /boot/cmdline.txt")
 update_crontab("pi_cam-reboot", f"@reboot {script_dir}/run_all.sh", username="root")
 
 print("Network configuration for local NTP")
-shell_cmd("tools/net_config_common.sh")
+shell_cmd(f"{script_dir}/tools/net_config_common.sh")
 
 # Install/update pi-monitor
 if (Path.home() / "pi-monitor").exists():
