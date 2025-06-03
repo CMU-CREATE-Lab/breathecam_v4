@@ -31,21 +31,6 @@ sudo nmcli connection modify "Wired connection 1" \
         connection.autoconnect-retries 0
 
 # ------------------------------------------------------------
-# 2. Keep the link-local address from polluting routing or DNS
-# ------------------------------------------------------------
-sudo nmcli connection modify "Wired connection 1" \
-        ipv4.never-default yes \
-        ipv4.ignore-auto-dns yes
-
-# ------------------------------------------------------------
-# 3. Remove the obsolete standalone link-local profile, if any
-# ------------------------------------------------------------
-if nmcli --terse --fields NAME connection show | grep -q '^eth0-ll$'; then
-    echo "Deleting obsolete eth0-ll profile ..."
-    sudo nmcli connection delete eth0-ll
-fi
-
-# ------------------------------------------------------------
 # 4. Activate the updated profile immediately
 # ------------------------------------------------------------
 sudo nmcli connection up "Wired connection 1"
