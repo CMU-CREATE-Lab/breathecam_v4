@@ -216,7 +216,9 @@ We want to handle:
 2. **Router or DHCP Fails**: The boards can still talk on the local network (switch or direct), but the router is offline. The "clients" must still get time from "clock."
 3. **Partial Board Failures**: If a single "client" fails, the others continue syncing from "clock" or from the internet if available.
 
-In all cases, the "clock" board's DS3231 acts as a reliable local time source.
+So under various failure modes the "clock" board's DS3231 acts as a local time source for all the cards. Note that we only block waiting for NTP on startup. Once the breathecam servers are started they will keep running, network or no.  See ''tools/wait_for_ntp.py''.
+
+There do seem to be some cases where we are offline and not all the boards boot at the same time they will end up with different ideas of whether they are using link-local addresses or a DHCP. In particular, if we are all booted with DHCP and then the router goes down and some of the client boards reboot (but not the clock), the connected clients don't know the stale IP DHCP address the clock is using, and will hang waiting for the time. Once the net is restored this will resolve. Possibly we would also recover after the DHCP lease expires and netnamager realizes it has to fall back to link-local, but that takes hours.
 
 ### 2. Services and Components
 
