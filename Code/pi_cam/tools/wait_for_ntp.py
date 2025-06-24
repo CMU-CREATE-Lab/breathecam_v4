@@ -6,7 +6,7 @@
 # If we wait for normal NTP convergence then we would delay our startup by 5-10 minutes, which
 # is annoyingly slow, especially for field testing.
 #
-# We would wait forever on the client boards if the clock NTP server is inaccessible. 
+# We will wait forever on the client boards if the clock NTP server is inaccessible. 
 # See README.md for discussion of the local NTP synch to the RTC.
 
 import subprocess

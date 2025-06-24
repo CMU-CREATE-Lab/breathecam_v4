@@ -9,7 +9,6 @@ def read_scrollpos() -> Tuple[Vector2, str]:
             sp = json.load(file)
         return Vector2(sp['x'], sp['y']), sp['mode']
     except Exception as e:
-        print(f"Got exception reading scrollpos.json; returning default ({e})")
         return Vector2(0, 0), "ZoomOut"
 
 def write_scrollpos(sp: dict):

@@ -1,4 +1,5 @@
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import time
 import glob
 import os
@@ -30,32 +31,29 @@ class ServiceConfig:
         subprocess.run([self._base_dir + "tools/wait_for_ntp.py"])
 
     def _log_start(self, logname):
-        # Save old log files and open a new one. We only move files for
-        # our 'logname' to avoid a race condition with other processes where
-        # we move their newly opened logs.
-        #
-        # If we used threads then there could be just one logger, which
-        # would simplify things.  Even without threads we probably
-        # could exploit the append behavior of logging to log all to
-        # the same file.
-        try:
-            os.makedirs(self.log_dir(), exist_ok = True)
-            # old_logdir = self.log_dir() + 'old/'
-            # os.makedirs(old_logdir, exist_ok = True)
-            # listOfFilesToMove = glob.glob(self.log_dir() + logname + "_*.txt")
-            # for fileToMove in listOfFilesToMove:
-            #     print("Saving old log "+ fileToMove)
-            #     base = os.path.basename(fileToMove)
-            #     os.rename(self.log_dir() + base, old_logdir + base)
-        except:
-            print("Error moving log file" + str(exc_info()[0]))
+        log_file  = os.path.join(self.log_dir(), "breathecam.txt")
 
-        # log_file = (self.log_dir() + logname + '_' +
-        #            str(int(time.time())) + ".txt")
-        log_file = self.log_dir() + "breathecam.txt"
-        log_level = logging.getLevelName(self.parser['breathecam']['log_level'])
-        logging.basicConfig(level=log_level, filename=log_file,
-                            format='%(asctime)s %(name)s %(levelname)s: %(message)s')
+        # 2.  Convert the level name ('INFO', etc.) to its int value
+        level_name = self.parser['breathecam']['log_level'].upper()
+        log_level  = getattr(logging, level_name, logging.INFO)
+
+        # 3.  Daily rotation, keep 14 compressed archives
+        handler = TimedRotatingFileHandler(
+            log_file,
+            when='midnight',          # keyword arg for clarity
+            interval=1,
+            backupCount=14,
+            encoding='utf-8',         # avoids locale-dependent surprises
+            delay=True                # don’t open the file until first write
+        )
+        formatter = logging.Formatter(
+            '%(asctime)s %(name)s %(levelname)s: %(message)s')
+        handler.setFormatter(formatter)
+
+        # 4.  (Re)initialise the root logger and force any old config out of the way
+        logging.basicConfig(level=log_level, handlers=[handler], force=True)
+
+        # 5.  Your module-specific logger
         self.logger = logging.getLogger(logname)
 
     def _read_config(self):
