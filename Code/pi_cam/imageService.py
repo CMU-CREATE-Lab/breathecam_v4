@@ -81,8 +81,8 @@ class ImageService:
                 exif = piexif.dump({"0th": zero_ifd, "Exif": exif_ifd})
             img.save(file_output, compress_level=png_compress_level, quality=jpeg_quality, exif=exif)
         end_time = time.monotonic()
-        self.log.info(f"Saved image to file {file_output}.")
-        self.log.info(f"Time taken for encode: {(end_time-start_time)*1000} ms.")
+        self.log.debug(f"Saved image to file {file_output}.")
+        self.log.debug(f"Time taken for encode: {(end_time-start_time)*1000} ms.")
 
     def save_file_and_metadata(self, request: Union[CompletedRequest, Response], capture_timestamp: int, rotate_ccw_90: bool):
         image_dir = self.config.image_dir().rstrip("/")
