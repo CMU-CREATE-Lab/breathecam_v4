@@ -141,6 +141,14 @@ sudo zerotier-cli join db64858fedb73ddd
 On windows you use the gui to join somehow.
 
 Log into the  [Zerotier web site](https://my.zerotier.com/network/db64858fedb73ddd) and add this host in the same way as for the pi. You'll use the same network ID (db64...) above.
+
+### Accessing stand-alone for testing using Windows 10 Laptop
+Setup up connection sharing for the laptop ethernet port. On the ethernet port adapter, under IPV4 settings, make sure "select address automatically" is set. Windows will then set this to a fixed address when sharing is enabled (eg 192.168.137.1). Go to the  adapter settings for the internet connection (eg. wifi), and in properties, on the sharing tab, enable sharing. Select the laptop ethernet port as the "local network".  Close out the dialogs and reboot the pi.
+
+ You can see if the pi has connected by 'arp -a' in the windows command prompt. It would show up under the 192.168.137.* interface as 192.168.1.137.nnn, where nnn isn't 255. If you are lucky then you should be able to connect via '\<pi name\>.local'. The breathecam 'a' host is typically configured as the NTP server and will respond to 'breathecam_ntp.local' via the avahi daemon, while the 'b-d' hosts  should respond as to 'clairton3b.local' etc.   Also, if you are internet connected, go to Zerotier and see if the host is connected. If the '.local' isn't working you can directly connect to the IP from 'arp -a' or Zerotier.
+
+The 192.168.1.137.1 network will only show up in 'arp -a' if you have connection sharing enabled and the wired connection is live. If you see this network but the pi host doesn't appear, it may work to turn *off* connection sharing (as above), reboot windows, turn connection sharing back on, then power cycle the pi. 
+
 ### VNC access
 **\[The settings described here are done automatically by install.py\]**
 
@@ -211,15 +219,18 @@ With later versions of netmanager this version is more tasteful and concise, but
 ### 1. Failure Modes and Goals
 
 We want to handle:
-
 1. **Internet Uplink Fails**: The router may still give out IP addresses (DHCP), but there's no external connectivity. Clients still need accurate time for logging.
 2. **Router or DHCP Fails**: The boards can still talk on the local network (switch or direct), but the router is offline. The "clients" must still get time from "clock."
 3. **Partial Board Failures**: If a single "client" fails, the others continue syncing from "clock" or from the internet if available.
 
 So under various failure modes the "clock" board's DS3231 acts as a local time source for all the cards. Note that we only block waiting for NTP on startup. Once the breathecam servers are started they will keep running, network or no.  See ''tools/wait_for_ntp.py''.
 
-There do seem to be some cases where we are offline and not all the boards boot at the same time they will end up with different ideas of whether they are using link-local addresses or a DHCP. In particular, if we are all booted with DHCP and then the router goes down and some of the client boards reboot (but not the clock), the connected clients don't know the stale IP DHCP address the clock is using, and will hang waiting for the time. Once the net is restored this will resolve. Possibly we would also recover after the DHCP lease expires and netnamager realizes it has to fall back to link-local, but that takes hours.
+#### NTP second order problems:
+TLDR: offline operation may come unstuck if not all the cards boot under the same network conditions (DHCP vs link-local.) This isn't likely because normally all cards boot at the same time, when the power comes up. Another way this could happen is if just one host reboots. But so far as we know this uncommon, and would be a double failure of some sort.
 
+NetManager doesn't seem to notice when network goes away, the hosts stay with their last DHCP. Any cards with *do* reboot seem to lose their ability to talk because they don't have an old IP. It seems OK if all the cards reboot. Related, ntp doesn't seem to notice if the clock IP address changes due to switching from DHCP to link-local. So if clock alone reboots when we are running with net down, then clock will come up in link-local mode but the clients are still using their old DHCP. They can't talk to clock. 
+
+Eventually, after 24 hours or so net manager does notice DHCP is gone and enables link-local IP. We can then connect from client to clock, but NTP still keeps using the old IP address. Also, eventually, after 24 hours or so without clock, ntpstat starts reporting not synchronized. But this doesn't really matter because we only use ntpstat to delay startup until we have the time. We don't stop if we lose synch, which is fine I think. We will only run for a week or so without net, and it isn't terrible if the images are bit out of synch, definitely better to keep logging.
 ### 2. Services and Components
 
 1. **Hardware Clock (DS3231)** on the "clock" board  
@@ -295,7 +306,6 @@ The kernel should automatically synchronize the hardware clock to NTP time once 
 3. **Partial Failures**  
    - A single "client" can fail without affecting others.  
    - As long as "clock" stays up, the network has a valid time source.
-
 ### 6. Summary
 
 This arrangement allows robust time distribution among a group of Raspberry Pi boards:
