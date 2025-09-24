@@ -42,4 +42,6 @@ def zerotier_join_network(network):
 zerotier_join_network("db64858fedb73ddd")
 
 # Generate new SSH host keys since existing one was cloned
+shell_cmd("sudo rm -f /etc/ssh/ssh_host_*key*")
 shell_cmd("sudo ssh-keygen -A")
+shell_cmd("sudo systemctl restart ssh")
