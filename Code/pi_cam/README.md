@@ -48,7 +48,7 @@ clone.sh uses the rpi-clone script, https://github.com/geerlingguy/rpi-clone. Yo
 ```
 curl https://raw.githubusercontent.com/geerlingguy/rpi-clone/master/install | sudo bash
 ```
-If you want to clone just one card you can use rpi-clone directly. This will clone the r8unning system to the card mounted on sda (the first USB device attached):
+If you want to clone just one card you can use rpi-clone directly. This will clone the running system to the card mounted on sda (the first USB device attached):
 ```
 sudo rpi-clone sda
 ```
@@ -86,9 +86,9 @@ Insert the SD card readers into the hub *in order*, since the cards will appear 
 tools/clone.sh host1
 ```
 ## Per host configuration
-Boot the new host from a cloned card and ssh to it with eg. `ssh breathecam@host1a`.  Run `tools/zerotier_add.py` on that host.  On the [Zerotier web site](https://my.zerotier.com/network/db64858fedb73ddd), enable display of never-authorized breathecam hosts.  This filter option only appears when there is a new host requesting access. When the new one appears, give it the Pi hostname as its name and authorize it.  `zerotier_add.py` will delay until you add the host, looping until it is successful. 
+Boot the new host from a cloned card and ssh to it with eg. `ssh breathecam@host1a`.  Run `tools/zerotier_join.py` on that host.  On the [Zerotier web site](https://my.zerotier.com/network/db64858fedb73ddd), enable display of never-authorized breathecam hosts.  This filter option only appears when there is a new host requesting access. When the new one appears, click the edit icon to bring up a dialog, check "Authorized" and give it the Pi hostname as its name.  Hit return or click "Save" and then close the dialog. `zerotier_join.py` will delay until you add the host, looping until it is successful. 
  
- `zerotier_add.py` also does `ssh-keygen` to generate a new host ssh key so that all the hosts don't have the same key, which causes ssh to complain.
+ `zerotier_join.py` also does `ssh-keygen` to generate a new host ssh key so that all the hosts don't have the same key, which causes ssh to complain.
 
 You need additional per-host configuration to get the local NTP time distribution working (as described below.)  Do these after `tools/zerotier_join.py`:
 
