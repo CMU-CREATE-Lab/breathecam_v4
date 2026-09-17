@@ -8,8 +8,8 @@ sensor_size = [6.287, 4.712];
 % Image size in pixels
 pixel_size = [4056, 3040];
 
-%portrait = false
-portrait = true
+portrait = false
+%portrait = true
 
 % Distance between mount holes on the short side for Arducam mini HQ
 % cam. This is used to show sensitivity of mount fabrication tolerances.
@@ -23,13 +23,15 @@ end
 % Focal length in mm.
 %focal_length = 12.5
 %focal_length = 16
-focal_length = 25
-%focal_length = 50
+%focal_length = 25
+focal_length = 50
+%focal_length = 100
 
 % Camera arrangement, number of cameras in the X and Y directions
 %layout = [2 2]
-layout = [4 1]
+%layout = [4 1]
 %layout = [1 1]
+layout = [2 1]
 
 % Angular field of view, see:
 % https://www.edmundoptics.com/knowledge-center/application-notes/imaging/understanding-focal-length-and-field-of-view/
@@ -64,7 +66,8 @@ theta
 % symmetric positive ones.
 plate_angles = theta(theta(:,1) >= 0, 1);
 
-% Spacer stack needed to get angle with 5" sine plate
+% Spacer stack (inches) needed to get angle with 5" sine plate. First
+% column is the angle in degrees.
 plate_stacks = [plate_angles sin(plate_angles / 180 * pi)*5]
 
 

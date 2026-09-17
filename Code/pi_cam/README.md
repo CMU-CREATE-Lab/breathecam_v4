@@ -64,6 +64,7 @@ Set up a 4-port USB hub attached to `bcinit.local`. Physically label four USB SD
 
 Do this *before* inserting the card readers with the SD cards to be cloned:
 ```
+cd ~/breathecam/Code/pi_com
 # stop SD cards from getting auto mounted, which can cause various problems.
 sudo systemctl stop udisks2.service
 # Clean up any current breathecam outputs
@@ -143,9 +144,13 @@ On windows you use the gui to join somehow.
 Log into the  [Zerotier web site](https://my.zerotier.com/network/db64858fedb73ddd) and add this host in the same way as for the pi. You'll use the same network ID (db64...) above.
 
 ### Accessing stand-alone for testing using Windows 10 Laptop
+You can set up windows connection sharing so that the laptop acts as the router, rather than relying on the ISP router and Zerotier, **This is for when you want the Pi hosts to get internet access through the laptop (or to simulate the absence of a network connection.)** 
+
 Setup up connection sharing for the laptop ethernet port. On the ethernet port adapter, under IPV4 settings, make sure "select address automatically" is set. Windows will then set this to a fixed address when sharing is enabled (eg 192.168.137.1). Go to the  adapter settings for the internet connection (eg. wifi), and in properties, on the sharing tab, enable sharing. Select the laptop ethernet port as the "local network".  Close out the dialogs and reboot the pi.
 
- You can see if the pi has connected by 'arp -a' in the windows command prompt. It would show up under the 192.168.137.* interface as 192.168.1.137.nnn, where nnn isn't 255. If you are lucky then you should be able to connect via '\<pi name\>.local'. The breathecam 'a' host is typically configured as the NTP server and will respond to 'breathecam_ntp.local' via the avahi daemon, while the 'b-d' hosts  should respond as to 'clairton3b.local' etc.   Also, if you are internet connected, go to Zerotier and see if the host is connected. If the '.local' isn't working you can directly connect to the IP from 'arp -a' or Zerotier.
+ You can see if the pi has connected by 'arp -a' in the windows command prompt. It would show up under the 192.168.137.* interface as 192.168.1.137.nnn, where nnn isn't 255. If you are lucky then you should be able to connect via '\<pi name\>.local'. The breathecam 'a' host is typically configured as the NTP server and will respond to 'breathecam_ntp.local' via the avahi daemon, while the 'b-d' hosts  should respond as to 'clairton3b.local' etc.   Also, if you are internet connected, go to [Zerotier](https://my.zerotier.com/network/db64858fedb73ddd) and see if the host is connected to their cloud. 
+ 
+ If the '.local' isn't working you can directly connect to the IP shown by 'arp -a' or Zerotier "Managed IP".  If you can get to one of the Pi hosts somehow then it will be able to do the '.local' lookups properly. 
 
 The 192.168.1.137.1 network will only show up in 'arp -a' if you have connection sharing enabled and the wired connection is live. If you see this network but the pi host doesn't appear, it may work to turn *off* connection sharing (as above), reboot windows, turn connection sharing back on, then power cycle the pi. 
 
